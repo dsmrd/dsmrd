@@ -19,6 +19,9 @@
 
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -129,7 +132,7 @@ int http_decode(http_decoder_t inst, char* buf, ssize_t len, int (callback)(http
 								inst->state = DATA;
 								action = DROP;
 							} else {
-								inst->state = DONE;
+								inst->state = REQUEST;
 								action = HANDLE_REQUEST;
 							}
 						} else {
@@ -150,6 +153,7 @@ int http_decode(http_decoder_t inst, char* buf, ssize_t len, int (callback)(http
 				inst->dataread++;
 				if (inst->dataread == inst->http_content_length) {
 					debug("data received %d bytes", inst->dataread);
+					inst->state = REQUEST;
 					action = HANDLE_REQUEST;
 				}
 				break;
@@ -224,6 +228,7 @@ int http_decode(http_decoder_t inst, char* buf, ssize_t len, int (callback)(http
 			case HANDLE_REQUEST:
 				debug("REQUEST FINISHED");
 				inst->callback(inst->data, inst);
+				inst->len = 0;
 				break;
 		}
 	}
@@ -264,7 +269,7 @@ handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) 
 
 int handler_callback(void* data, http_decoder_t decoder) {
 	handler_t inst = (handler_t) data;
-	char buf[256];
+	char buf[8192];
 
 	info("Served %s %s", decoder->request_method, decoder->request_uri);
 
@@ -274,10 +279,12 @@ int handler_callback(void* data, http_decoder_t decoder) {
 		error("Ill method");
 	} else {
 		if (strcmp(decoder->request_uri, "/") == 0) {
-			char b2[256];
-			snprintf(b2, sizeof(b2), "<html><body>Please refer to API documentation</body></html>");
+			char b2[8192];
+			int fd = open(WWWDIR "/index.html", O_RDONLY);
+			int rval = read(fd, b2, sizeof(b2));
+			close(fd);
 			snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
-			debug(buf);
+			//debug(buf);
 		} else if (strcmp(decoder->request_uri, "/api/electricity/tariff1") == 0) {
 			char b2[256];
 			snprintf(b2, sizeof(b2), "{ \"value\": \"%010.3f\", \"unit\": \"%s\" }", inst->dsmr->electr_to_client_tariff1, "kWh");

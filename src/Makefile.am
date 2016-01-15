@@ -17,6 +17,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
+wwwdir = $(pkgdatadir)/www
+
 bin_PROGRAMS = dsmrd
 dsmrd_SOURCES = main.c
 dsmrd_SOURCES += dsmr.h
@@ -35,6 +37,10 @@ dsmrd_SOURCES += accept.h
 dsmrd_SOURCES += accept.c
 dsmrd_SOURCES += http.h
 dsmrd_SOURCES += http.c
-bin_PROGRAMS += p1sim
+
+noinst_PROGRAMS = p1sim
 p1sim_SOURCES = p1sim.c
+
 AM_CPPFLAGS = -Wall -g
+AM_CPPFLAGS += -DWWWDIR='"$(wwwdir)"'
+

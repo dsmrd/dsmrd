@@ -18,7 +18,7 @@
 #
 
 AC_INIT([dsmrd], [0.1], [info@dsmrd.org])
-AM_INIT_AUTOMAKE([-Wall -Werror ])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])

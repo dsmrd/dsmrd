@@ -287,13 +287,13 @@ int handler_callback(void* data, http_decoder_t decoder) {
 			//debug(buf);
 		} else if (strcmp(decoder->request_uri, "/api/electricity/tariff1") == 0) {
 			char b2[256];
-			snprintf(b2, sizeof(b2), "{ \"value\": \"%010.3f\", \"unit\": \"%s\" }", inst->dsmr->electr_to_client_tariff1, "kWh");
-			snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
+			snprintf(b2, sizeof(b2), "{ \"value\": %.3f, \"unit\": \"%s\" }", inst->dsmr->electr_to_client_tariff1, "kWh");
+			snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
 			debug(buf);
 		} else if (strcmp(decoder->request_uri, "/api/electricity/tariff2") == 0) {
 			char b2[256];
-			snprintf(b2, sizeof(b2), "{ \"value\": \"%010.3f\", \"unit\": \"%s\" }", inst->dsmr->electr_to_client_tariff2, "kWh");
-			snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
+			snprintf(b2, sizeof(b2), "{ \"value\": %.3f, \"unit\": \"%s\" }", inst->dsmr->electr_to_client_tariff2, "kWh");
+			snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
 			debug(buf);
 		} else {
 			snprintf(buf, sizeof(buf), "HTTP/1.1 404 Fail\r\nContent-Length: 0\r\n\r\n");

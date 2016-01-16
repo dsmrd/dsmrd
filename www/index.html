@@ -1,34 +1,54 @@
+<!DOCTYPE html>
 <html>
 <head>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery-timer.min.js"></script>
 <script>
 
 $(document).ready(function(){
-		$("#tariff1").html("--");
-		$("#tariff2").html("--");
-$('button').click(function() {
-		$.get("/api/electricity/tariff1", function(result){
-			$("#tariff1").html(result);
+		setInterval(function() {
+		$.getJSON("api/electricity/tariff1", function(result){
+			var value = result.value;
+			$("#t10").html(Math.floor((value/100000) % 10));
+			$("#t11").html(Math.floor((value/10000) % 10));
+			$("#t12").html(Math.floor((value/1000) % 10));
+			$("#t13").html(Math.floor((value/100) % 10));
+			$("#t14").html(Math.floor((value/10) % 10));
+			$("#t15").html(Math.floor(value % 10));
+			$("#t16").html(Math.floor((value*10) % 10));
+			$("#t17").html(Math.floor((value*100) % 10));
+			$("#t18").html(Math.floor((value*1000) % 10));
+			});
+		$.getJSON("api/electricity/tariff2", function(result){
+			var value = result.value;
+			$("#t20").html(Math.floor((value/100000) % 10));
+			$("#t21").html(Math.floor((value/10000) % 10));
+			$("#t22").html(Math.floor((value/1000) % 10));
+			$("#t23").html(Math.floor((value/100) % 10));
+			$("#t24").html(Math.floor((value/10) % 10));
+			$("#t25").html(Math.floor(value % 10));
+			$("#t26").html(Math.floor((value*10) % 10));
+			$("#t27").html(Math.floor((value*100) % 10));
+			$("#t28").html(Math.floor((value*1000) % 10));
 		});
-		$.get("/api/electricity/tariff2", function(result){
-			$("#tariff2").html(result);
-		});
-});
+}, 1000);
 });
 
 </script>
-</head>
+<style>
+td.nonfract {
+    color: black;
+    background-color: grey;
+}
+td.fract {
+    color: grey;
+    background-color: black;
+}
+</style></head>
 <body>
 <h1>DSMRd</h1>
-<ul>
-<li><a href="/api/electricity/tariff1">/api/electricity/tariff1</a>
-<li><a href="/api/electricity/tariff2">/api/electricity/tariff2</a>
-</ul>
 <table>
-<tr><td>Tariff 1</td><td id="tariff1"></td></tr>
-<tr><td>Tariff 2</td><td id="tariff2"></td></tr>
+<tr><th>I</th><td class="nonfract" id="t10"/><td class="nonfract" id="t11"/><td class="nonfract" id="t12"/><td class="nonfract" id="t13"/><td class="nonfract" id="t14"/><td class="nonfract" id="t15"/><td class="fract" id="t16"/><td class="fract" id="t17"/><td class="fract" id="t18"/><td>kWh</td></tr>
+<tr><th>II</th><td class="nonfract" id="t20"/><td class="nonfract" id="t21"/><td class="nonfract" id="t22"/><td class="nonfract" id="t23"/><td class="nonfract" id="t24"/><td class="nonfract" id="t25"/><td class="fract" id="t26"/><td class="fract" id="t27"/><td class="fract" id="t28"/><td>kWh</td></tr>
 </table>
-<button>Refresh</button>
 </body>
 </html>

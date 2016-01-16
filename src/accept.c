@@ -73,19 +73,25 @@ int accept_open(accept_t acc, dispatch_t dis) {
 		error("Cannot create socket: %s", strerror(errno));
 		rval = -1;
 	} else {
-		serv_addr.sin_family      = AF_INET;
-		serv_addr.sin_addr.s_addr = INADDR_ANY;
-		serv_addr.sin_port        = htons(acc->port);
-		rval = bind(acc->fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
-		if (rval < 0) {
-			error("Cannot bind port: %s", strerror(errno));
+		int optval = 1;
+		rval = setsockopt(acc->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+		if (rval != 0) {
+			error("Cannot set socket options: %s", strerror(errno));
 		} else {
-			rval = listen(acc->fd, 5);
+			serv_addr.sin_family      = AF_INET;
+			serv_addr.sin_addr.s_addr = INADDR_ANY;
+			serv_addr.sin_port        = htons(acc->port);
+			rval = bind(acc->fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
 			if (rval < 0) {
-				error("Cannot listen: %s", strerror(errno));
+				error("Cannot bind port: %s", strerror(errno));
 			} else {
-				dispatch_register(dis, acc->fd, accept_read, NULL, NULL, accept_close, acc);
-				acc->dis = dis;
+				rval = listen(acc->fd, 5);
+				if (rval < 0) {
+					error("Cannot listen: %s", strerror(errno));
+				} else {
+					dispatch_register(dis, acc->fd, accept_read, NULL, NULL, accept_close, acc);
+					acc->dis = dis;
+				}
 			}
 		}
 	}
@@ -116,6 +122,8 @@ int accept_close(void* inst) {
 	accept_t acc = (accept_t) inst;
 
 	(void) dispatch_unregister(acc->dis, inst);
+
+	close(acc->fd);
 
 	info("Stopped webserver");
 

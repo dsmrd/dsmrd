@@ -1,9 +1,34 @@
 <html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery-timer.min.js"></script>
+<script>
+
+$(document).ready(function(){
+		$("#tariff1").html("--");
+		$("#tariff2").html("--");
+$('button').click(function() {
+		$.get("/api/electricity/tariff1", function(result){
+			$("#tariff1").html(result);
+		});
+		$.get("/api/electricity/tariff2", function(result){
+			$("#tariff2").html(result);
+		});
+});
+});
+
+</script>
+</head>
 <body>
 <h1>DSMRd</h1>
 <ul>
 <li><a href="/api/electricity/tariff1">/api/electricity/tariff1</a>
 <li><a href="/api/electricity/tariff2">/api/electricity/tariff2</a>
 </ul>
+<table>
+<tr><td>Tariff 1</td><td id="tariff1"></td></tr>
+<tr><td>Tariff 2</td><td id="tariff2"></td></tr>
+</table>
+<button>Refresh</button>
 </body>
 </html>

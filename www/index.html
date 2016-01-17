@@ -17,7 +17,10 @@ $(document).ready(function(){
 			$("#t16").html(Math.floor((value*10) % 10));
 			$("#t17").html(Math.floor((value*100) % 10));
 			$("#t18").html(Math.floor((value*1000) % 10));
-			});
+			}).fail(function() {
+				$('.nonfract').html('-');
+				$('.fract').html('-');
+				});
 		$.getJSON("api/electricity/tariff2", function(result){
 			var value = result.value;
 			$("#t20").html(Math.floor((value/100000) % 10));
@@ -29,14 +32,31 @@ $(document).ready(function(){
 			$("#t26").html(Math.floor((value*10) % 10));
 			$("#t27").html(Math.floor((value*100) % 10));
 			$("#t28").html(Math.floor((value*1000) % 10));
-		});
+		}).fail(function() {
+                $('.nonfract').html('-');
+                $('.fract').html('-');
+                });
 }, 1000);
 });
 
 </script>
 <style>
+html {
+	background-color: black;
+}
 body {
+	margin: auto;
+	width: 400px;
+	font-family: sans-serif;
+	text-align: center;
+}
+table#idd {
+	width: 300px;
+	height: 400px;
+	border: 5px solid grey;
 	background-color: silver;
+	border-style: inset;
+	margin: 40px;
 }
 td.nonfract {
     color: black;
@@ -46,12 +66,25 @@ td.fract {
     color: white;
     background-color: black;
 }
+div.footer {
+	position: fixed;
+	bottom: 2px;
+	left: 2px;
+	font-size: 8px;
+}
 </style></head>
 <body>
+<table id="idd">
+<tr><td>
 <h1>DSMRd</h1>
+</td></tr>
+<tr><td>
 <table>
 <tr><th>I</th><td class="nonfract" id="t10"/><td class="nonfract" id="t11"/><td class="nonfract" id="t12"/><td class="nonfract" id="t13"/><td class="nonfract" id="t14"/><td class="nonfract" id="t15"/><td class="fract" id="t16"/><td class="fract" id="t17"/><td class="fract" id="t18"/><td>kWh</td></tr>
 <tr><th>II</th><td class="nonfract" id="t20"/><td class="nonfract" id="t21"/><td class="nonfract" id="t22"/><td class="nonfract" id="t23"/><td class="nonfract" id="t24"/><td class="nonfract" id="t25"/><td class="fract" id="t26"/><td class="fract" id="t27"/><td class="fract" id="t28"/><td>kWh</td></tr>
 </table>
+</td></tr>
+</table>
+<div class="footer">&copy;2016 M.J. de Wit (<a href="mailto:info@dsmrd.org">info@dsmrd.org</a>)</div>
 </body>
 </html>

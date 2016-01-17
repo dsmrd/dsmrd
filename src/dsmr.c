@@ -315,7 +315,7 @@ int obis_dec(double* out, char* in, char* unit) {
 			error("Ill unit");
 		} else {
 			subnstr(arg1, in, pmtch[1].rm_so, pmtch[1].rm_eo, sizeof(arg1));
-			sscanf(arg1, "%0lf", out);
+			sscanf(arg1, "%lf", out);
 		}
 	}
 	regfree(&prg);
@@ -335,7 +335,7 @@ int obis_decint(int* out, char* in) {
 		error("Ill var");
 	} else {
 		subnstr(arg1, in, pmtch[1].rm_so, pmtch[1].rm_eo, sizeof(arg1));
-		sscanf(arg1, "%0d", out);
+		sscanf(arg1, "%d", out);
 	}
 	regfree(&prg);
 

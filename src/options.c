@@ -21,14 +21,36 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <libgen.h>
 #include "options.h"
 
-static struct struct_options_t options;
+struct struct_options_t options;
+
+int run_from_src(char* argv[], char** dir) {
+	char arg0[PATH_MAX];
+	char s[PATH_MAX];
+	int rval;
+
+	strncpy(arg0, argv[0], sizeof(arg0));
+	*dir = dirname(arg0);
+	snprintf(s, sizeof(s), "%s/%s", *dir, __FILE__);
+	rval = (access(s, F_OK) != -1);
+
+	return rval;
+}
 
 options_t options_init(int argc, char* argv[]) {
 	int opt;
+	char* dir;
 
 	memset(&options, 0, sizeof(struct struct_options_t));
+
+	if (run_from_src(argv, &dir)) {
+		snprintf(options.wwwdir, sizeof(options.wwwdir), "%s/../www", dir);
+	} else {
+		snprintf(options.wwwdir, sizeof(options.wwwdir), "%s", WWWDIR);
+	}
 	options.daemonize = 1;
 	options.baud = 115200;
 	options.port = 8888;

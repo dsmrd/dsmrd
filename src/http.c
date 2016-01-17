@@ -29,6 +29,7 @@
 #include <strings.h>
 #include <string.h>
 #include <regex.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "logging.h"
@@ -36,6 +37,7 @@
 #include "dispatch.h"
 #include "accept.h"
 #include "http.h"
+#include "options.h"
 
 
 
@@ -280,8 +282,16 @@ int handler_callback(void* data, http_decoder_t decoder) {
 	} else {
 		if (strcmp(decoder->request_uri, "/") == 0) {
 			char b2[8192];
-			int fd = open(WWWDIR "/index.html", O_RDONLY);
+			char index[PATH_MAX];
+			snprintf(index, sizeof(index), "%s/%s", options.wwwdir, "index.html");
+			int fd = open(index, O_RDONLY);
+			if (fd < 0) {
+				error("Open error '%s'", index);
+			}
 			int rval = read(fd, b2, sizeof(b2));
+			if (rval < 0) {
+				error("Read error");
+			}
 			close(fd);
 			snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
 			//debug(buf);

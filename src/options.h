@@ -20,6 +20,8 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
+#include <limits.h>
+
 typedef enum {
 	B9K6,
 	B19K2,
@@ -55,9 +57,12 @@ struct struct_options_t {
 	options_startbits_t startbits;
 	options_parity_t parity;
 	options_stopbits_t stopbits;
+    char wwwdir[PATH_MAX];
 };
 
 typedef struct struct_options_t* options_t;
+
+extern struct struct_options_t options;
 
 options_t options_init(int argc, char* argv[]);
 

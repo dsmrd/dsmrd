@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
+#include <time.h>
 
 #define FIFO_FILE       "tty"
 
@@ -34,10 +35,10 @@ char* p2msg5 =
 0-0:96.1.1(4B384547303034303436333935353037)\r\n\
 1-0:1.8.1(%010.3f*kWh)\r\n\
 1-0:1.8.2(%010.3f*kWh)\r\n\
-1-0:2.8.1(123456.789*kWh)\r\n\
-1-0:2.8.2(123456.789*kWh)\r\n\
-0-0:96.14.0(0002)\r\n\
-1-0:1.7.0(01.193*kW)\r\n\
+1-0:2.8.1(000000.000*kWh)\r\n\
+1-0:2.8.2(000000.000*kWh)\r\n\
+0-0:96.14.0(%04d)\r\n\
+1-0:1.7.0(%06.3f*kW)\r\n\
 1-0:2.7.0(00.000*kW)\r\n\
 0-0:96.7.21(00004)\r\n\
 0-0:96.7.9(00002)\r\n\
@@ -49,18 +50,18 @@ char* p2msg5 =
 1-0:52.36.0(00003)\r\n\
 1-0:72.36.0(00000)\r\n\
 0-0:96.13.0(303132333435363738393A3B3C3D3E3F303132333435363738393A3B3C3D3E3F303132333435363738393A3B3C3D3E3F303132333435363738393A3B3C3D3E3F303132333435363738393A3B3C3D3E3F)\r\n\
-1-0:32.7.0(220.1*V)\r\n\
-1-0:52.7.0(220.2*V)\r\n\
-1-0:72.7.0(220.3*V)\r\n\
-1-0:31.7.0(001*A)\r\n\
-1-0:51.7.0(002*A)\r\n\
-1-0:71.7.0(003*A)\r\n\
-1-0:21.7.0(01.111*kW)\r\n\
-1-0:41.7.0(02.222*kW)\r\n\
-1-0:61.7.0(03.333*kW)\r\n\
-1-0:22.7.0(04.444*kW)\r\n\
-1-0:42.7.0(05.555*kW)\r\n\
-1-0:62.7.0(06.666*kW)\r\n\
+1-0:32.7.0(%05.1f*V)\r\n\
+1-0:52.7.0(%05.1f*V)\r\n\
+1-0:72.7.0(%05.1f*V)\r\n\
+1-0:31.7.0(%03.0f*A)\r\n\
+1-0:51.7.0(%03.0f*A)\r\n\
+1-0:71.7.0(%03.0f*A)\r\n\
+1-0:21.7.0(%06.3f*kW)\r\n\
+1-0:41.7.0(%06.3f*kW)\r\n\
+1-0:61.7.0(%06.3f*kW)\r\n\
+1-0:22.7.0(00.000*kW)\r\n\
+1-0:42.7.0(00.000*kW)\r\n\
+1-0:62.7.0(00.000*kW)\r\n\
 0-1:24.1.0(003)\r\n\
 0-1:96.1.0(3232323241424344313233343536373839)\r\n\
 0-1:24.2.1(101209112500W)(12785.123*m3)\r\n\
@@ -130,14 +131,22 @@ char* p1msg =
 !\r\n\
 ";
 
-double meter_reading_electricity_delivered_tariff_1_kwh = 24.0;
-double meter_reading_electricity_delivered_tariff_2_kwh = 18.0;
+double kwh1 = 24.0;
+double kwh2 = 18.0;
 
 int main() {
 	FILE* fp;
 	char buf[4096];
 	//char* buf = p1msg;
 	int i;
+	double v1, a1c, p1, a1 = 0.0;
+	double v2, a2c, p2, a2 = 0.0;
+	double v3, a3c, p3, a3 = 0.0;
+	double tc;
+	double p;
+	int t = 0;
+
+	srand(time(0));
 
 	umask(0);
 	mknod(FIFO_FILE, S_IFIFO|0666, 0);
@@ -146,14 +155,53 @@ int main() {
 	while (1) {
 		fp = fopen(FIFO_FILE, "w");
 		while (1) {
+			v1 = ((double) rand() / RAND_MAX * 1) + 220.0;
+			v2 = ((double) rand() / RAND_MAX * 1) + 220.0;
+			v3 = ((double) rand() / RAND_MAX * 1) + 220.0;
+			a1c = (double) rand() / RAND_MAX * 100;
+			a2c = (double) rand() / RAND_MAX * 100;
+			a3c = (double) rand() / RAND_MAX * 100;
+			if (a1c > 95.0) {
+				a1 = (double) rand() / RAND_MAX * 30;
+			}
+			if (a2c > 95.0) {
+				a2 = (double) rand() / RAND_MAX * 30;
+			}
+			if (a3c > 95.0) {
+				a3 = (double) rand() / RAND_MAX * 30;
+			}
+			p1 = a1 * v1 / 1000;
+			p2 = a2 * v2 / 1000;
+			p3 = a3 * v3 / 1000;
+			tc = (double) rand() / RAND_MAX * 100;
+			if (tc > 95.0) {
+				t = 1 - t;
+			}
+			p = p1 + p2 + p3;
+			if (t == 0) {
+				kwh1 += (p / 1000);
+			} else {
+				kwh2 += (p / 1000);
+			}
+
+			//printf("v1=%f\n", v1);
+			//printf("a1c=%f\n", a1c);
+			//printf("a1=%f\n", a1);
+			//printf("p1=%f\n", p1);
+			//printf("kwh1=%f\n", kwh1);
+			//printf("kwh2=%f\n", kwh2);
 			snprintf(buf, sizeof(buf), p2msg5,
-					meter_reading_electricity_delivered_tariff_1_kwh,
-					meter_reading_electricity_delivered_tariff_2_kwh);
+					kwh1,
+					kwh2,
+					t + 1,
+					p,
+					v1, v2, v3,
+					a1, a2, a3,
+					p1, p2, p3
+					);
 			i = fwrite(buf, strlen(buf), 1, fp);
 			fflush(fp);
 			sleep(1);
-			meter_reading_electricity_delivered_tariff_1_kwh += 0.0009;
-			meter_reading_electricity_delivered_tariff_2_kwh += 0.0004;
 		}
 		fclose(fp);
 	}

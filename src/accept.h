@@ -20,6 +20,9 @@
 #ifndef ACCEPT_H
 #define ACCEPT_H
 
+#include "dispatch.h"
+#include "dsmr.h"
+
 typedef struct struct_accept_t* accept_t;
 
 accept_t accept_init(int port, dsmr_t dsmr);

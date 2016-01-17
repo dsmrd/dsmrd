@@ -22,6 +22,10 @@
 
 #include <limits.h>
 
+#ifndef PATH_MAX
+#define PATH_MAX 256
+#endif // PATH_MAX
+
 typedef enum {
 	B9K6,
 	B19K2,

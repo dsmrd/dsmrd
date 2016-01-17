@@ -20,6 +20,9 @@
 #ifndef HTTP_H
 #define HTTP_H
 
+#include "dispatch.h"
+#include "dsmr.h"
+
 typedef struct struct_handler_t* handler_t;
 
 handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr);

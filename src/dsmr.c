@@ -74,8 +74,8 @@ void hexdec(char* buf, const char *hex) {
 	char ret = 0; 
 	int i = 0;
 	while (*hex) {
-		ret = hextable[*hex++];
-		ret = (ret << 4) | hextable[*hex++];
+		ret = hextable[(int)(*hex++)];
+		ret = (ret << 4) | hextable[(int)(*hex++)];
 		buf[i++] = ret;
 	}
 }

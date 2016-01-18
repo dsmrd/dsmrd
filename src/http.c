@@ -271,7 +271,7 @@ handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) 
 
 int handler_callback(void* data, http_decoder_t decoder) {
 	handler_t inst = (handler_t) data;
-	char buf[8192];
+	char buf[16*2014];
 
 	info("Served %s %s", decoder->request_method, decoder->request_uri);
 
@@ -281,7 +281,7 @@ int handler_callback(void* data, http_decoder_t decoder) {
 		error("Ill method");
 	} else {
 		if (strcmp(decoder->request_uri, "/") == 0) {
-			char b2[8192];
+			char b2[16*2014];
 			char index[PATH_MAX];
 			snprintf(index, sizeof(index), "%s/%s", options.wwwdir, "index.html");
 			int fd = open(index, O_RDONLY);

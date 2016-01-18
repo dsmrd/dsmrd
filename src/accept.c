@@ -123,6 +123,8 @@ int accept_close(void* inst) {
 
 	close(acc->fd);
 
+	free(acc);
+
 	info("Stopped webserver");
 
 	return 0;

@@ -252,7 +252,8 @@ static int dsmr_process() {
 						subnstr(arg1, obis_value, pmtch[1].rm_so, pmtch[1].rm_eo, sizeof(arg1));
 						hexdec(bf, arg1);
 						bf[strlen(arg1)/2] = '\0';
-						debug("version '%s'", bf);
+						//debug("version '%s'", bf);
+						regfree(&prg);
 						break;
 					case OBIS_EQUIPMENT_IDENTIFIER:
 						regcomp(&prg, "^\\(([^)]*)\\)$", REG_EXTENDED);
@@ -260,7 +261,8 @@ static int dsmr_process() {
 						subnstr(arg1, obis_value, pmtch[1].rm_so, pmtch[1].rm_eo, sizeof(arg1));
 						hexdec(bf, arg1);
 						bf[strlen(arg1)/2] = '\0';
-						debug("equipment-id '%s'", bf);
+						//debug("equipment-id '%s'", bf);
+						regfree(&prg);
 						break;
 					case OBIS_ELECTR_TO_CLIENT_TARIFF1:
 						obis_dec(&dsmr_decoder.pkt->electr_to_client_tariff1, obis_value, "kWh");

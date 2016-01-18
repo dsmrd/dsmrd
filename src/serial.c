@@ -183,6 +183,8 @@ int serial_close(void* data) {
 
 	close(inst->fd);
 
+	free(inst);
+
 	info("Stopped P1 driver");
 
 	return 0;

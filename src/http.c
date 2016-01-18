@@ -95,6 +95,13 @@ http_decoder_t http_init(int (callback)(void*, http_decoder_t), void* data) {
 	return inst;
 }
 
+int http_exit(http_decoder_t inst) {
+	regfree(&inst->regex_request);
+	regfree(&inst->regex_header);
+	free(inst);
+	return 0;
+}
+
 static char* subnstr(char* dest, const char* string, int so, int eo, size_t n) {
 	int len = eo - so;
 	int min = (len < (n-1)) ? len : (n-1);
@@ -350,8 +357,13 @@ int handler_close(void* data) {
 
     (void) dispatch_unregister(hdlr->dis, hdlr);
 
-	debug("Handler close");
+	http_exit(hdlr->decoder);
+
 	close(hdlr->fd);
+
+	free(hdlr);
+
+	debug("Handler close");
 
 	return 0;
 }

@@ -255,8 +255,6 @@ struct struct_handler_t {
 	dispatch_t dis;
 };
 
-typedef struct struct_handler_t* handler_t;
-
 int handler_read(void*);
 
 handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) {

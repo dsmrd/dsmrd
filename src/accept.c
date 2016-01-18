@@ -44,8 +44,6 @@ struct struct_accept_t {
 	dsmr_t dsmr;
 };
 
-typedef struct struct_accept_t* accept_t;
-
 accept_t accept_init(int port, dsmr_t dsmr) {
 	accept_t acc;
 

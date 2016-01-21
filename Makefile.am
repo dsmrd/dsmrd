@@ -19,3 +19,12 @@
 
 SUBDIRS = src www
 
+debian: $(PACKAGE_NAME)-$(PACKAGE_VERSION).tar.gz
+	( \
+		cp $(PACKAGE_NAME)-$(PACKAGE_VERSION).tar.gz $(PACKAGE_NAME)_$(PACKAGE_VERSION).orig.tar.gz; \
+		tar xzf $(PACKAGE_NAME)_$(PACKAGE_VERSION).orig.tar.gz; \
+		cp -r debian $(PACKAGE_NAME)-$(PACKAGE_VERSION); \
+		cd $(PACKAGE_NAME)-$(PACKAGE_VERSION); \
+		debuild \
+	)
+

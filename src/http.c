@@ -274,54 +274,119 @@ handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) 
 	return inst;
 }
 
+
+static int do_index(handler_t inst) {
+	char index[PATH_MAX];
+	char buf[16*2014];
+	char b2[16*2014];
+
+	snprintf(index, sizeof(index), "%s/%s", options.wwwdir, "index.html");
+	int fd = open(index, O_RDONLY);
+	if (fd < 0) {
+		error("Open error '%s'", index);
+	}
+	int rval = read(fd, b2, sizeof(b2));
+	if (rval < 0) {
+		error("Read error");
+	}
+	close(fd);
+
+	snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
+
+	rval = write(inst->fd, buf, strlen(buf));
+	if (rval < 0) {
+		error("Cannot write result");
+	}
+
+	return rval;
+}
+
+static int do_tariff1(handler_t inst) {
+	char buf[16*2014];
+	char b2[256];
+	int rval;
+
+	snprintf(b2, sizeof(b2), "{ \"value\": %.3f, \"unit\": \"%s\" }", inst->dsmr->electr_to_client_tariff1, "kWh");
+	snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
+
+	rval = write(inst->fd, buf, strlen(buf));
+	if (rval < 0) {
+		error("Cannot write result");
+	}
+
+	return rval;
+}
+
+static int do_tariff2(handler_t inst) {
+	char b2[256];
+	char buf[256];
+	int rval;
+
+	snprintf(b2, sizeof(b2), "{ \"value\": %.3f, \"unit\": \"%s\" }", inst->dsmr->electr_to_client_tariff2, "kWh");
+	snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
+
+	rval = write(inst->fd, buf, strlen(buf));
+	if (rval < 0) {
+		error("Cannot write result");
+	}
+
+	return rval;
+}
+
+struct {
+	char* resource;
+	struct {
+		char* method;
+		int (*f)(handler_t inst);
+	} xx[5];
+} rest[] = {
+	{ "/",                        { { "GET", do_index } } },
+	{ "/api/electricity/tariff1", { { "GET", do_tariff1 } } },
+	{ "/api/electricity/tariff2", { { "GET", do_tariff2 } } },
+};
+
 int handler_callback(void* data, http_decoder_t decoder) {
 	handler_t inst = (handler_t) data;
 	char buf[16*2014];
+	int rval = 0;
 
 	info("Served %s %s", decoder->request_method, decoder->request_uri);
 
-	if (strcmp(decoder->request_method, "GET") != 0) {
-		snprintf(buf, sizeof(buf), "HTTP/1.1 404 Ill method\r\nContent-Length: 0\r\n\r\n");
-		debug(buf);
-		error("Ill method");
+	int i, j=0;
+	for (i=0; i<sizeof(rest)/sizeof(rest[0]); i++) {
+		if (strcmp(rest[i].resource, decoder->request_uri) == 0) {
+			for (j=0; j<sizeof(rest[i].xx)/sizeof(rest[0].xx[i]); j++) {
+				if (strcmp(rest[i].xx[j].method, decoder->request_method) == 0) {
+					break;
+				}
+			}
+			break;
+		}
+	}
+	if (i == sizeof(rest)/sizeof(rest[0])) {
+		debug("404 Not found");
+		snprintf(buf, sizeof(buf), "HTTP/1.1 404 Not found\r\nContent-Length: 0\r\n\r\n");
+		rval = write(inst->fd, buf, strlen(buf));
+		if (rval < 0) {
+			error("Cannot write 404");
+		}
 	} else {
-		if (strcmp(decoder->request_uri, "/") == 0) {
-			char b2[16*2014];
-			char index[PATH_MAX];
-			snprintf(index, sizeof(index), "%s/%s", options.wwwdir, "index.html");
-			int fd = open(index, O_RDONLY);
-			if (fd < 0) {
-				error("Open error '%s'", index);
-			}
-			int rval = read(fd, b2, sizeof(b2));
+		if (j == sizeof(rest[i].xx)/sizeof(rest[0].xx[i])) {
+			debug("405 Method Not Allowed");
+			snprintf(buf, sizeof(buf), "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n");
+			rval = write(inst->fd, buf, strlen(buf));
 			if (rval < 0) {
-				error("Read error");
+				error("Cannot write 405");
 			}
-			close(fd);
-			snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
-			//debug(buf);
-		} else if (strcmp(decoder->request_uri, "/api/electricity/tariff1") == 0) {
-			char b2[256];
-			snprintf(b2, sizeof(b2), "{ \"value\": %.3f, \"unit\": \"%s\" }", inst->dsmr->electr_to_client_tariff1, "kWh");
-			snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
-			debug(buf);
-		} else if (strcmp(decoder->request_uri, "/api/electricity/tariff2") == 0) {
-			char b2[256];
-			snprintf(b2, sizeof(b2), "{ \"value\": %.3f, \"unit\": \"%s\" }", inst->dsmr->electr_to_client_tariff2, "kWh");
-			snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
-			debug(buf);
 		} else {
-			snprintf(buf, sizeof(buf), "HTTP/1.1 404 Fail\r\nContent-Length: 0\r\n\r\n");
-			debug(buf);
+			rval = rest[i].xx[j].f(inst);
+			if (rval < 0) {
+				error("Cannot handle request");
+			}
 		}
 	}
 
-	ssize_t rval = write(inst->fd, buf, strlen(buf));
-	if (rval < 0) {
-		error("write");
-	}
-
-	return 0;
+	return rval;
 }
 
 int handler_open(handler_t inst, dispatch_t dis) {

@@ -30,6 +30,7 @@
 #include <string.h>
 #include <regex.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "logging.h"
@@ -105,6 +106,7 @@ int http_exit(http_decoder_t inst) {
 static char* subnstr(char* dest, const char* string, int so, int eo, size_t n) {
 	int len = eo - so;
 	int min = (len < (n-1)) ? len : (n-1);
+	if (so == -1) { return NULL; }
 	strncpy(dest, string+so, min);
 	dest[min] = '\0';
 	return dest;
@@ -275,7 +277,7 @@ handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) 
 }
 
 
-static int do_index(handler_t inst, char* rsrc) {
+static int do_index(handler_t inst, char* method) {
 	char index[PATH_MAX];
 	char buf[16*2014];
 	char b2[16*2014];
@@ -301,74 +303,117 @@ static int do_index(handler_t inst, char* rsrc) {
 	return rval;
 }
 
-static char* do_tariff1(handler_t inst, char* rsrc) {
+static char* do_tariff1(handler_t inst, char* method, ...) {
+	va_list ap;
 	static char buf[16*2014];
-
 	double t;
-	if (strcmp("/api/electricity/tariff1", rsrc) == 0) {
+
+	va_start(ap, method);
+
+	char* arg0 = va_arg(ap, char*);
+
+	if (strcmp("/api/electricity/tariff1", arg0) == 0) {
 		t = inst->dsmr->electr_to_client_tariff1;
 	} else {
 		t = inst->dsmr->electr_to_client_tariff2;
 	}
 	snprintf(buf, sizeof(buf), "{ \"value\": %.3f, \"unit\": \"%s\" }", t, "kWh");
 
+	va_end(ap);
+
 	return buf;
 }
 
-static char* do_tariff_delivered(handler_t inst, char* rsrc) {
+static char* do_tariff_delivered(handler_t inst, char* method, ...) {
+	va_list ap;
 	static char buf[256];
-
 	double t;
-	if (strcmp("/api/electricity/tariffs/1/delivered", rsrc) == 0) {
+
+	va_start(ap, method);
+
+	char* arg0 = va_arg(ap, char*);
+	char* arg1 = va_arg(ap, char*);
+	printf("arg0=%s\n", arg0);
+	printf("arg1=%s\n", arg1);
+
+	if (strcmp("/api/electricity/tariffs/1/delivered", arg0) == 0) {
 		t = inst->dsmr->electr_by_client_tariff1;
 	} else {
 		t = inst->dsmr->electr_by_client_tariff2;
 	}
 	snprintf(buf, sizeof(buf), "%.3f", t);
 
+	va_end(ap);
+
 	return buf;
 }
 
-static char* do_power_delivered(handler_t inst, char* rsrc) {
-	static char buf[256];
+static char* do_total_power_delivered(handler_t inst, char* method, ...) {
+    va_list ap;
+    static char buf[256];
+    double t;
 
+    va_start(ap, method);
+
+	t = inst->dsmr->electr_power_delivered;
+	snprintf(buf, sizeof(buf), "%.3f", t);
+
+    va_end(ap);
+
+    return buf;
+}
+
+static char* do_power_delivered(handler_t inst, char* method, ...) {
+	va_list ap;
+	static char buf[256];
 	double t;
-	if (strcmp("/api/electricity/phases/1/power_delivered", rsrc) == 0) {
+
+	va_start(ap, method);
+
+	char* arg0 = va_arg(ap, char*);
+	//char* arg1 = va_arg(ap, char*);
+
+	if (strcmp("/api/electricity/phases/1/power_delivered", arg0) == 0) {
 		t = inst->dsmr->electr_inst_active_power_delv_l1;
-	} else if (strcmp("/api/electricity/phases/2/power_delivered", rsrc) == 0) {
+	} else if (strcmp("/api/electricity/phases/2/power_delivered", arg0) == 0) {
 		t = inst->dsmr->electr_inst_active_power_delv_l2;
 	} else {
 		t = inst->dsmr->electr_inst_active_power_delv_l3;
 	}
 	snprintf(buf, sizeof(buf), "%.3f", t);
 
+	va_end(ap);
+
 	return buf;
 }
 
-static char* do_indicator(handler_t inst, char* rsrc) {
+static char* do_indicator(handler_t inst, char* method, ...) {
+	va_list ap;
 	static char buf[256];
 
+	va_start(ap, method);
+
 	snprintf(buf, sizeof(buf), "%s", inst->dsmr->electr_tariff_indicator);
+
+	va_end(ap);
 
 	return buf;
 }
 
 struct {
 	char* resource;
+	regex_t regex;
 	struct {
 		char* method;
-		char* (*f)(handler_t inst, char* rsrc);
+		char* (*f)(handler_t inst, char* method, ...);
 	} xx[5];
 } rest[] = {
-	//{ "/",                                  { { "GET", do_index } } },
-	{ "/api/electricity/tariff1",           { { "GET", do_tariff1 } } },
-	{ "/api/electricity/tariff2",           { { "GET", do_tariff1 } } },
-	{ "/api/electricity/tariffs/indicator", { { "GET", do_indicator } } },
-	{ "/api/electricity/tariffs/1/delivered", { { "GET", do_tariff_delivered } } },
-	{ "/api/electricity/tariffs/2/delivered", { { "GET", do_tariff_delivered } } },
-	{ "/api/electricity/phases/1/power_delivered", { { "GET", do_power_delivered } } },
-	{ "/api/electricity/phases/2/power_delivered", { { "GET", do_power_delivered } } },
-	{ "/api/electricity/phases/3/power_delivered", { { "GET", do_power_delivered } } },
+	{ "/api/electricity/tariff1",           {}, { { "GET", do_tariff1 } } },
+	{ "/api/electricity/tariff2",           {}, { { "GET", do_tariff1 } } },
+	{ "/api/electricity/tariffs/indicator", {}, { { "GET", do_indicator } } },
+	{ "/api/electricity/tariffs/[12]/delivered", {}, { { "GET", do_tariff_delivered } } },
+	{ "/api/electricity/phases/([123])/power_delivered", {}, { { "GET", do_power_delivered } } },
+	{ "/api/electricity/power/delivered", {}, { { "GET", do_total_power_delivered } } },
 };
 
 int handler_callback(void* data, http_decoder_t decoder) {
@@ -381,9 +426,12 @@ int handler_callback(void* data, http_decoder_t decoder) {
 	if (strncmp("/api", decoder->request_uri, 4) != 0) {
 		do_index(inst, decoder->request_uri);
 	} else {
+		regmatch_t pmatch[5];
 		int i, j=0;
+
 		for (i=0; i<sizeof(rest)/sizeof(rest[0]); i++) {
-			if (strcmp(rest[i].resource, decoder->request_uri) == 0) {
+			rval = regcomp(&rest[i].regex, rest[i].resource, REG_EXTENDED);
+			if (0 == regexec(&rest[i].regex, decoder->request_uri, 5, pmatch, 0)) {
 				for (j=0; j<sizeof(rest[i].xx)/sizeof(rest[0].xx[i]); j++) {
 					if (strcmp(rest[i].xx[j].method, decoder->request_method) == 0) {
 						break;
@@ -392,6 +440,7 @@ int handler_callback(void* data, http_decoder_t decoder) {
 				break;
 			}
 		}
+
 		if (i == sizeof(rest)/sizeof(rest[0])) {
 			debug("404 Not found");
 			snprintf(buf, sizeof(buf), "HTTP/1.1 404 Not found\r\nContent-Length: 0\r\n\r\n");
@@ -409,7 +458,19 @@ int handler_callback(void* data, http_decoder_t decoder) {
 				}
 			} else {
 				char buf[256];
-				char* b2 = rest[i].xx[j].f(inst, decoder->request_uri);
+				char* b2;
+				char arg0[256];
+				char arg1[256];
+				char arg2[256];
+				//char arg3[256];
+				//char arg4[256];
+
+				subnstr(arg0, decoder->request_uri, pmatch[0].rm_so, pmatch[0].rm_eo, sizeof(arg0));
+				subnstr(arg1, decoder->request_uri, pmatch[1].rm_so, pmatch[1].rm_eo, sizeof(arg1));
+				subnstr(arg2, decoder->request_uri, pmatch[2].rm_so, pmatch[2].rm_eo, sizeof(arg2));
+
+				b2 = rest[i].xx[j].f(inst, NULL /*decoder->request_uri*/, arg0, arg1, arg2);
+
 				snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
 				rval = write(inst->fd, buf, strlen(buf));
 				if (rval < 0) {

@@ -196,7 +196,7 @@ struct obis_map_t {
 	{ "1-0:62.7.0",  OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L3 },
 	{ "0-1:24.1.0",  OBIS_DEVICE1_TYPE },
 	{ "0-1:96.1.0",  OBIS_DEVICE1_EQUIPMENT_IDENTIFIER },
-	{ "0-1:24.2.1",  OBIS_DEVICE1_LAST_5MIN_VALUE },
+	//{ "0-1:24.2.1",  OBIS_DEVICE1_LAST_5MIN_VALUE },
 	{ "0-2:24.1.0",  OBIS_DEVICE2_TYPE },
 	{ "0-2:96.1.0",  OBIS_DEVICE2_EQUIPMENT_IDENTIFIER },
 	{ "0-2:24.2.1",  OBIS_DEVICE2_LAST_5MIN_VALUE },
@@ -235,7 +235,7 @@ static int dsmr_process() {
 			}
 
 			if (j == (sizeof(obis_map)/sizeof(struct obis_map_t))) {
-				error("Ill OBIS");
+				error("Unknown OBIS code: '%s'", dsmr_decoder.buffer[i]);
 			} else {
 				char arg1[256];
 				//char arg2[256];
@@ -285,11 +285,66 @@ static int dsmr_process() {
 					case OBIS_ELECTR_INST_CURRENT_L1:
 						obis_dec(&dsmr_decoder.pkt->electr_inst_current_l1, obis_value, "A");
 						break;
-					//case OBIS_ELECTR_NOF_POWER_FAILURES:
-						obis_decint(&dsmr_decoder.pkt->electr_nof_power_failures, obis_value);
+					case OBIS_ELECTR_INST_CURRENT_L2:
+						obis_dec(&dsmr_decoder.pkt->electr_inst_current_l2, obis_value, "A");
+						break;
+					case OBIS_ELECTR_INST_CURRENT_L3:
+						obis_dec(&dsmr_decoder.pkt->electr_inst_current_l3, obis_value, "A");
+						break;
+					case OBIS_ELECTR_INST_VOLTAGE_L1:
+						obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l1, obis_value, "V");
+						break;
+					case OBIS_ELECTR_INST_VOLTAGE_L2:
+						obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l2, obis_value, "V");
+						break;
+					case OBIS_ELECTR_INST_VOLTAGE_L3:
+						obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l3, obis_value, "V");
+						break;
+					case OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L1:
+						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l1, obis_value, "kW");
+						break;
+					case OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L2:
+						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l2, obis_value, "kW");
+						break;
+					case OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L3:
+						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l3, obis_value, "kW");
+						break;
+					case OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L1:
+						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l1, obis_value, "kW");
+						break;
+					case OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L2:
+						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l2, obis_value, "kW");
+						break;
+					case OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L3:
+						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l3, obis_value, "kW");
+						break;
+					case OBIS_ELECTR_NOF_POWER_FAILURES:
+						//obis_decint(&dsmr_decoder.pkt->electr_nof_power_failures, obis_value);
 						//break;
-					default:
-						//debug("Dropped OBIS code '%s'", obis_map[j].reference);
+					case OBIS_ELECTR_NOF_LONG_POWER_FAILURES:
+					case OBIS_ELECTR_POWER_FAILURE_EVENT_LOG:
+					case OBIS_ELECTR_NOF_VOLTAGE_SAGE_L1:
+					case OBIS_ELECTR_NOF_VOLTAGE_SAGE_L2:
+					case OBIS_ELECTR_NOF_VOLTAGE_SAGE_L3:
+					case OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L1:
+					case OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L2:
+					case OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L3:
+					case OBIS_ELECTR_TEXT_MESSAGE:
+					case OBIS_DEVICE1_TYPE:
+					case OBIS_DEVICE1_EQUIPMENT_IDENTIFIER:
+					case OBIS_DEVICE1_LAST_5MIN_VALUE:
+					case OBIS_DEVICE2_TYPE:
+					case OBIS_DEVICE2_EQUIPMENT_IDENTIFIER:
+					case OBIS_DEVICE2_LAST_5MIN_VALUE:
+					case OBIS_DEVICE3_TYPE:
+					case OBIS_DEVICE3_EQUIPMENT_IDENTIFIER:
+					case OBIS_DEVICE3_LAST_5MIN_VALUE:
+					case OBIS_DEVICE4_TYPE:
+					case OBIS_DEVICE4_EQUIPMENT_IDENTIFIER:
+					case OBIS_DEVICE4_LAST_5MIN_VALUE:
+					case OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR:
+					case OBIS_DATETIME_STAMP:
+						// Silently drop...
 						break;
 				}
 			}

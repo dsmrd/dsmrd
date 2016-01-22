@@ -275,7 +275,7 @@ handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) 
 }
 
 
-static int do_index(handler_t inst) {
+static int do_index(handler_t inst, char* rsrc) {
 	char index[PATH_MAX];
 	char buf[16*2014];
 	char b2[16*2014];
@@ -301,48 +301,74 @@ static int do_index(handler_t inst) {
 	return rval;
 }
 
-static int do_tariff1(handler_t inst) {
-	char buf[16*2014];
-	char b2[256];
-	int rval;
+static char* do_tariff1(handler_t inst, char* rsrc) {
+	static char buf[16*2014];
 
-	snprintf(b2, sizeof(b2), "{ \"value\": %.3f, \"unit\": \"%s\" }", inst->dsmr->electr_to_client_tariff1, "kWh");
-	snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
-
-	rval = write(inst->fd, buf, strlen(buf));
-	if (rval < 0) {
-		error("Cannot write result");
+	double t;
+	if (strcmp("/api/electricity/tariff1", rsrc) == 0) {
+		t = inst->dsmr->electr_to_client_tariff1;
+	} else {
+		t = inst->dsmr->electr_to_client_tariff2;
 	}
+	snprintf(buf, sizeof(buf), "{ \"value\": %.3f, \"unit\": \"%s\" }", t, "kWh");
 
-	return rval;
+	return buf;
 }
 
-static int do_tariff2(handler_t inst) {
-	char b2[256];
-	char buf[256];
-	int rval;
+static char* do_tariff_delivered(handler_t inst, char* rsrc) {
+	static char buf[256];
 
-	snprintf(b2, sizeof(b2), "{ \"value\": %.3f, \"unit\": \"%s\" }", inst->dsmr->electr_to_client_tariff2, "kWh");
-	snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
-
-	rval = write(inst->fd, buf, strlen(buf));
-	if (rval < 0) {
-		error("Cannot write result");
+	double t;
+	if (strcmp("/api/electricity/tariffs/1/delivered", rsrc) == 0) {
+		t = inst->dsmr->electr_by_client_tariff1;
+	} else {
+		t = inst->dsmr->electr_by_client_tariff2;
 	}
+	snprintf(buf, sizeof(buf), "%.3f", t);
 
-	return rval;
+	return buf;
+}
+
+static char* do_power_delivered(handler_t inst, char* rsrc) {
+	static char buf[256];
+
+	double t;
+	if (strcmp("/api/electricity/phases/1/power_delivered", rsrc) == 0) {
+		t = inst->dsmr->electr_inst_active_power_delv_l1;
+	} else if (strcmp("/api/electricity/phases/2/power_delivered", rsrc) == 0) {
+		t = inst->dsmr->electr_inst_active_power_delv_l2;
+	} else {
+		t = inst->dsmr->electr_inst_active_power_delv_l3;
+	}
+	snprintf(buf, sizeof(buf), "%.3f", t);
+
+	return buf;
+}
+
+static char* do_indicator(handler_t inst, char* rsrc) {
+	static char buf[256];
+
+	snprintf(buf, sizeof(buf), "%s", inst->dsmr->electr_tariff_indicator);
+
+	return buf;
 }
 
 struct {
 	char* resource;
 	struct {
 		char* method;
-		int (*f)(handler_t inst);
+		char* (*f)(handler_t inst, char* rsrc);
 	} xx[5];
 } rest[] = {
-	{ "/",                        { { "GET", do_index } } },
-	{ "/api/electricity/tariff1", { { "GET", do_tariff1 } } },
-	{ "/api/electricity/tariff2", { { "GET", do_tariff2 } } },
+	//{ "/",                                  { { "GET", do_index } } },
+	{ "/api/electricity/tariff1",           { { "GET", do_tariff1 } } },
+	{ "/api/electricity/tariff2",           { { "GET", do_tariff1 } } },
+	{ "/api/electricity/tariffs/indicator", { { "GET", do_indicator } } },
+	{ "/api/electricity/tariffs/1/delivered", { { "GET", do_tariff_delivered } } },
+	{ "/api/electricity/tariffs/2/delivered", { { "GET", do_tariff_delivered } } },
+	{ "/api/electricity/phases/1/power_delivered", { { "GET", do_power_delivered } } },
+	{ "/api/electricity/phases/2/power_delivered", { { "GET", do_power_delivered } } },
+	{ "/api/electricity/phases/3/power_delivered", { { "GET", do_power_delivered } } },
 };
 
 int handler_callback(void* data, http_decoder_t decoder) {
@@ -352,36 +378,43 @@ int handler_callback(void* data, http_decoder_t decoder) {
 
 	info("Served %s %s", decoder->request_method, decoder->request_uri);
 
-	int i, j=0;
-	for (i=0; i<sizeof(rest)/sizeof(rest[0]); i++) {
-		if (strcmp(rest[i].resource, decoder->request_uri) == 0) {
-			for (j=0; j<sizeof(rest[i].xx)/sizeof(rest[0].xx[i]); j++) {
-				if (strcmp(rest[i].xx[j].method, decoder->request_method) == 0) {
-					break;
-				}
-			}
-			break;
-		}
-	}
-	if (i == sizeof(rest)/sizeof(rest[0])) {
-		debug("404 Not found");
-		snprintf(buf, sizeof(buf), "HTTP/1.1 404 Not found\r\nContent-Length: 0\r\n\r\n");
-		rval = write(inst->fd, buf, strlen(buf));
-		if (rval < 0) {
-			error("Cannot write 404");
-		}
+	if (strncmp("/api", decoder->request_uri, 4) != 0) {
+		do_index(inst, decoder->request_uri);
 	} else {
-		if (j == sizeof(rest[i].xx)/sizeof(rest[0].xx[i])) {
-			debug("405 Method Not Allowed");
-			snprintf(buf, sizeof(buf), "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n");
+		int i, j=0;
+		for (i=0; i<sizeof(rest)/sizeof(rest[0]); i++) {
+			if (strcmp(rest[i].resource, decoder->request_uri) == 0) {
+				for (j=0; j<sizeof(rest[i].xx)/sizeof(rest[0].xx[i]); j++) {
+					if (strcmp(rest[i].xx[j].method, decoder->request_method) == 0) {
+						break;
+					}
+				}
+				break;
+			}
+		}
+		if (i == sizeof(rest)/sizeof(rest[0])) {
+			debug("404 Not found");
+			snprintf(buf, sizeof(buf), "HTTP/1.1 404 Not found\r\nContent-Length: 0\r\n\r\n");
 			rval = write(inst->fd, buf, strlen(buf));
 			if (rval < 0) {
-				error("Cannot write 405");
+				error("Cannot write 404");
 			}
 		} else {
-			rval = rest[i].xx[j].f(inst);
-			if (rval < 0) {
-				error("Cannot handle request");
+			if (j == sizeof(rest[i].xx)/sizeof(rest[0].xx[i])) {
+				debug("405 Method Not Allowed");
+				snprintf(buf, sizeof(buf), "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n");
+				rval = write(inst->fd, buf, strlen(buf));
+				if (rval < 0) {
+					error("Cannot write 405");
+				}
+			} else {
+				char buf[256];
+				char* b2 = rest[i].xx[j].f(inst, decoder->request_uri);
+				snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
+				rval = write(inst->fd, buf, strlen(buf));
+				if (rval < 0) {
+					error("Cannot write result");
+				}
 			}
 		}
 	}

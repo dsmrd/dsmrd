@@ -89,12 +89,12 @@ serial_t serial_init(char* device, serial_baud_t baud, int is_tty, int (decoder)
 			free(inst);
 		} else {
 			strncpy(inst->device, device, sizeof(inst->device));
-			inst->newtio.c_cflag = b | CRTSCTS | CS8 | CLOCAL | CREAD;
+			inst->newtio.c_cflag = b | CS8 | CLOCAL | CREAD;
 			inst->newtio.c_iflag = IGNPAR;
 			inst->newtio.c_oflag = 0;
 			inst->newtio.c_lflag = 0;
-			inst->newtio.c_cc[VTIME] = 0;
-			inst->newtio.c_cc[VMIN] = 0;
+			inst->newtio.c_cc[VTIME] = 10;
+			inst->newtio.c_cc[VMIN] = 1;
 			inst->decoder = decoder;
 			inst->is_tty = is_tty;
 		}

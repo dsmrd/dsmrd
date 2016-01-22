@@ -196,7 +196,7 @@ struct obis_map_t {
 	{ "1-0:62.7.0",  OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L3 },
 	{ "0-1:24.1.0",  OBIS_DEVICE1_TYPE },
 	{ "0-1:96.1.0",  OBIS_DEVICE1_EQUIPMENT_IDENTIFIER },
-	//{ "0-1:24.2.1",  OBIS_DEVICE1_LAST_5MIN_VALUE },
+	{ "0-1:24.2.1",  OBIS_DEVICE1_LAST_5MIN_VALUE },
 	{ "0-2:24.1.0",  OBIS_DEVICE2_TYPE },
 	{ "0-2:96.1.0",  OBIS_DEVICE2_EQUIPMENT_IDENTIFIER },
 	{ "0-2:24.2.1",  OBIS_DEVICE2_LAST_5MIN_VALUE },
@@ -274,7 +274,7 @@ static int dsmr_process() {
 						obis_dec(&dsmr_decoder.pkt->electr_by_client_tariff1, obis_value, "kWh");
 						break;
 					case OBIS_ELECTR_BY_CLIENT_TARIFF2:
-						obis_dec(&dsmr_decoder.pkt->electr_by_client_tariff1, obis_value, "kWh");
+						obis_dec(&dsmr_decoder.pkt->electr_by_client_tariff2, obis_value, "kWh");
 						break;
 					case OBIS_ELECTR_POWER_DELIVERED:
 						obis_dec(&dsmr_decoder.pkt->electr_power_delivered, obis_value, "kW");

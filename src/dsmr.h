@@ -31,14 +31,14 @@ struct struct_dsmr_t {
 	//int    maximum_stroom_fase;
 	//int    stand_van_schakelaar;
 
-	char   version[2];
+	char   version[(2/2)+1]; // S2
 	time_t datetime_stamp;
-	char*  equipment_identifier;
+	char   equipment_identifier[(96/2)+1]; // Sn (n=0..96)
 	double electr_to_client_tariff1;
 	double electr_to_client_tariff2;
 	double electr_by_client_tariff1;
 	double electr_by_client_tariff2;
-	char*  electr_tariff_indicator;
+	char   electr_tariff_indicator[(4/2)+1]; // S4
 	double electr_power_delivered;
 	double electr_power_received;
 	int    electr_nof_power_failures;
@@ -50,7 +50,7 @@ struct struct_dsmr_t {
 	int    electr_nof_voltage_swells_l1;
 	int    electr_nof_voltage_swells_l2;
 	int    electr_nof_voltage_swells_l3;
-	char*  electr_text_message;
+	char   electr_text_message[(2048/2)+1]; // Sn (n=0..2048)
 	double electr_inst_voltage_l1;
 	double electr_inst_voltage_l2;
 	double electr_inst_voltage_l3;
@@ -64,16 +64,16 @@ struct struct_dsmr_t {
 	double electr_inst_active_power_recv_l2;
 	double electr_inst_active_power_recv_l3;
 	int    device1_type;
-	char*  device1_equipment_identifier;
+	char   device1_equipment_identifier[(96/2)+1]; // Sn (n=0..96)
 	double device1_last_5min_value;
 	int    device2_type;
-	char*  device2_equipment_identifier;
+	char   device2_equipment_identifier[(96/2)+1]; // Sn (n=0..96)
 	double device2_last_5min_value;
 	int    device3_type;
-	char*  device3_equipment_identifier;
+	char   device3_equipment_identifier[(96/2)+1]; // Sn (n=0..96)
 	double device3_last_5min_value;
 	int    device4_type;
-	char*  device4_equipment_identifier;
+	char   device4_equipment_identifier[(96/2)+1]; // Sn (n=0..96)
 	double device4_last_5min_value;
 };
 

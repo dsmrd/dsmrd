@@ -210,6 +210,7 @@ struct obis_map_t {
 
 int obis_dec(double* out, char* in, char* unit);
 int obis_decint(int* out, char* in);
+int obis_hexdec(char* out, char* in);
 
 static int dsmr_process() {
 	int i;
@@ -237,115 +238,132 @@ static int dsmr_process() {
 			if (j == (sizeof(obis_map)/sizeof(struct obis_map_t))) {
 				error("Unknown OBIS code: '%s'", dsmr_decoder.buffer[i]);
 			} else {
-				char arg1[256];
-				//char arg2[256];
-				//char arg3[256];
-				//char arg4[256];
-				char bf[256];
-				regex_t prg;
-				regmatch_t pmtch[15];
-				//double tag6;
 				switch (obis_map[j].key) {
 					case OBIS_VERSION:
-						regcomp(&prg, "^\\(([^)]*)\\)$", REG_EXTENDED);
-						regexec(&prg, obis_value, 15, pmtch, 0);
-						subnstr(arg1, obis_value, pmtch[1].rm_so, pmtch[1].rm_eo, sizeof(arg1));
-						hexdec(bf, arg1);
-						bf[strlen(arg1)/2] = '\0';
-						//debug("version '%s'", bf);
-						regfree(&prg);
+						rval = obis_hexdec(dsmr_decoder.pkt->version, obis_value);
 						break;
 					case OBIS_EQUIPMENT_IDENTIFIER:
-						regcomp(&prg, "^\\(([^)]*)\\)$", REG_EXTENDED);
-						regexec(&prg, obis_value, 15, pmtch, 0);
-						subnstr(arg1, obis_value, pmtch[1].rm_so, pmtch[1].rm_eo, sizeof(arg1));
-						hexdec(bf, arg1);
-						bf[strlen(arg1)/2] = '\0';
-						//debug("equipment-id '%s'", bf);
-						regfree(&prg);
+						rval = obis_hexdec(dsmr_decoder.pkt->equipment_identifier, obis_value);
 						break;
 					case OBIS_ELECTR_TO_CLIENT_TARIFF1:
-						obis_dec(&dsmr_decoder.pkt->electr_to_client_tariff1, obis_value, "kWh");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_to_client_tariff1, obis_value, "kWh");
 						break;
 					case OBIS_ELECTR_TO_CLIENT_TARIFF2:
-						obis_dec(&dsmr_decoder.pkt->electr_to_client_tariff2, obis_value, "kWh");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_to_client_tariff2, obis_value, "kWh");
 						break;
 					case OBIS_ELECTR_BY_CLIENT_TARIFF1:
-						obis_dec(&dsmr_decoder.pkt->electr_by_client_tariff1, obis_value, "kWh");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_by_client_tariff1, obis_value, "kWh");
 						break;
 					case OBIS_ELECTR_BY_CLIENT_TARIFF2:
-						obis_dec(&dsmr_decoder.pkt->electr_by_client_tariff2, obis_value, "kWh");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_by_client_tariff2, obis_value, "kWh");
 						break;
 					case OBIS_ELECTR_POWER_DELIVERED:
-						obis_dec(&dsmr_decoder.pkt->electr_power_delivered, obis_value, "kW");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_power_delivered, obis_value, "kW");
 						break;
 					case OBIS_ELECTR_POWER_RECEIVED:
-						obis_dec(&dsmr_decoder.pkt->electr_power_received, obis_value, "kW");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_power_received, obis_value, "kW");
 						break;
 					case OBIS_ELECTR_INST_CURRENT_L1:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_current_l1, obis_value, "A");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_current_l1, obis_value, "A");
 						break;
 					case OBIS_ELECTR_INST_CURRENT_L2:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_current_l2, obis_value, "A");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_current_l2, obis_value, "A");
 						break;
 					case OBIS_ELECTR_INST_CURRENT_L3:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_current_l3, obis_value, "A");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_current_l3, obis_value, "A");
 						break;
 					case OBIS_ELECTR_INST_VOLTAGE_L1:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l1, obis_value, "V");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l1, obis_value, "V");
 						break;
 					case OBIS_ELECTR_INST_VOLTAGE_L2:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l2, obis_value, "V");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l2, obis_value, "V");
 						break;
 					case OBIS_ELECTR_INST_VOLTAGE_L3:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l3, obis_value, "V");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l3, obis_value, "V");
 						break;
 					case OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L1:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l1, obis_value, "kW");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l1, obis_value, "kW");
 						break;
 					case OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L2:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l2, obis_value, "kW");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l2, obis_value, "kW");
 						break;
 					case OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L3:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l3, obis_value, "kW");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l3, obis_value, "kW");
 						break;
 					case OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L1:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l1, obis_value, "kW");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l1, obis_value, "kW");
 						break;
 					case OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L2:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l2, obis_value, "kW");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l2, obis_value, "kW");
 						break;
 					case OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L3:
-						obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l3, obis_value, "kW");
+						rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l3, obis_value, "kW");
 						break;
 					case OBIS_ELECTR_NOF_POWER_FAILURES:
-						//obis_decint(&dsmr_decoder.pkt->electr_nof_power_failures, obis_value);
-						//break;
+						rval = obis_decint(&dsmr_decoder.pkt->electr_nof_power_failures, obis_value);
+						break;
 					case OBIS_ELECTR_NOF_LONG_POWER_FAILURES:
-					case OBIS_ELECTR_POWER_FAILURE_EVENT_LOG:
+						rval = obis_decint(&dsmr_decoder.pkt->electr_nof_long_power_failures, obis_value);
+						break;
 					case OBIS_ELECTR_NOF_VOLTAGE_SAGE_L1:
+						rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_sage_l1, obis_value);
+						break;
 					case OBIS_ELECTR_NOF_VOLTAGE_SAGE_L2:
+						rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_sage_l2, obis_value);
+						break;
 					case OBIS_ELECTR_NOF_VOLTAGE_SAGE_L3:
+						rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_sage_l3, obis_value);
+						break;
 					case OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L1:
+						rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_swells_l1, obis_value);
+						break;
 					case OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L2:
+						rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_swells_l2, obis_value);
+						break;
 					case OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L3:
-					case OBIS_ELECTR_TEXT_MESSAGE:
+						rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_swells_l3, obis_value);
+						break;
 					case OBIS_DEVICE1_TYPE:
-					case OBIS_DEVICE1_EQUIPMENT_IDENTIFIER:
-					case OBIS_DEVICE1_LAST_5MIN_VALUE:
+						rval = obis_decint(&dsmr_decoder.pkt->device1_type, obis_value);
+						break;
 					case OBIS_DEVICE2_TYPE:
-					case OBIS_DEVICE2_EQUIPMENT_IDENTIFIER:
-					case OBIS_DEVICE2_LAST_5MIN_VALUE:
+						rval = obis_decint(&dsmr_decoder.pkt->device2_type, obis_value);
+						break;
 					case OBIS_DEVICE3_TYPE:
-					case OBIS_DEVICE3_EQUIPMENT_IDENTIFIER:
-					case OBIS_DEVICE3_LAST_5MIN_VALUE:
+						rval = obis_decint(&dsmr_decoder.pkt->device3_type, obis_value);
+						break;
 					case OBIS_DEVICE4_TYPE:
-					case OBIS_DEVICE4_EQUIPMENT_IDENTIFIER:
-					case OBIS_DEVICE4_LAST_5MIN_VALUE:
+						rval = obis_decint(&dsmr_decoder.pkt->device4_type, obis_value);
+						break;
 					case OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR:
+						rval = obis_hexdec(dsmr_decoder.pkt->electr_tariff_indicator, obis_value);
+						break;
+					case OBIS_ELECTR_TEXT_MESSAGE:
+						rval = obis_hexdec(dsmr_decoder.pkt->electr_text_message, obis_value);
+						break;
+					case OBIS_DEVICE1_EQUIPMENT_IDENTIFIER:
+						rval = obis_hexdec(dsmr_decoder.pkt->device1_equipment_identifier, obis_value);
+						break;
+					case OBIS_DEVICE2_EQUIPMENT_IDENTIFIER:
+						rval = obis_hexdec(dsmr_decoder.pkt->device2_equipment_identifier, obis_value);
+						break;
+					case OBIS_DEVICE3_EQUIPMENT_IDENTIFIER:
+						rval = obis_hexdec(dsmr_decoder.pkt->device3_equipment_identifier, obis_value);
+						break;
+					case OBIS_DEVICE4_EQUIPMENT_IDENTIFIER:
+						rval = obis_hexdec(dsmr_decoder.pkt->device4_equipment_identifier, obis_value);
+						break;
+					case OBIS_ELECTR_POWER_FAILURE_EVENT_LOG:
+					case OBIS_DEVICE1_LAST_5MIN_VALUE:
+					case OBIS_DEVICE2_LAST_5MIN_VALUE:
+					case OBIS_DEVICE3_LAST_5MIN_VALUE:
+					case OBIS_DEVICE4_LAST_5MIN_VALUE:
 					case OBIS_DATETIME_STAMP:
 						// Silently drop...
 						break;
+				}
+				if (rval != 0) {
+					error("Failed to decode");
 				}
 			}
 		}
@@ -377,7 +395,7 @@ int obis_dec(double* out, char* in, char* unit) {
 	}
 	regfree(&prg);
 
-	return 0;
+	return rval;
 }
 
 int obis_decint(int* out, char* in) {
@@ -396,7 +414,27 @@ int obis_decint(int* out, char* in) {
 	}
 	regfree(&prg);
 
-	return 0;
+	return rval;
+}
+
+int obis_hexdec(char* out, char* in) {
+	char arg1[256];
+	regex_t prg;
+	regmatch_t pmtch[2];
+	int rval;
+
+	regcomp(&prg, "^\\(([^)]*)\\)$", REG_EXTENDED);
+	rval = regexec(&prg, in, sizeof(pmtch)/sizeof(pmtch[0]), pmtch, 0);
+	if (rval != 0) {
+		error("Ill var");
+	} else {
+		subnstr(arg1, in, pmtch[1].rm_so, pmtch[1].rm_eo, sizeof(arg1));
+		hexdec(out, arg1);
+		out[strlen(arg1)/2] = '\0';
+	}
+	regfree(&prg);
+
+	return rval;
 }
 
 int dsmr_init(int (callback)(dsmr_t), dsmr_t pkt) {

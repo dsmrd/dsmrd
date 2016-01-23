@@ -324,6 +324,29 @@ static char* do_tariff1(handler_t inst, char* method, ...) {
 	return buf;
 }
 
+static char* do_tariff_received(handler_t inst, char* method, ...) {
+	va_list ap;
+	static char buf[256];
+	double t;
+
+	va_start(ap, method);
+
+	char* arg0 = va_arg(ap, char*);
+	//int arg1 = atoi(va_arg(ap, char*));
+
+	if (strcmp("/api/electricity/tariffs/1/received", arg0) == 0) {
+	//if (arg1 == 1) {
+		t = inst->dsmr->electr_to_client_tariff1;
+	} else {
+		t = inst->dsmr->electr_to_client_tariff2;
+	}
+	snprintf(buf, sizeof(buf), "%.3f", t);
+
+	va_end(ap);
+
+	return buf;
+}
+
 static char* do_tariff_delivered(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
@@ -332,11 +355,10 @@ static char* do_tariff_delivered(handler_t inst, char* method, ...) {
 	va_start(ap, method);
 
 	char* arg0 = va_arg(ap, char*);
-	char* arg1 = va_arg(ap, char*);
-	printf("arg0=%s\n", arg0);
-	printf("arg1=%s\n", arg1);
+	//int arg1 = atoi(va_arg(ap, char*));
 
 	if (strcmp("/api/electricity/tariffs/1/delivered", arg0) == 0) {
+	//if (arg1 == 1) {
 		t = inst->dsmr->electr_by_client_tariff1;
 	} else {
 		t = inst->dsmr->electr_by_client_tariff2;
@@ -363,22 +385,109 @@ static char* do_total_power_delivered(handler_t inst, char* method, ...) {
     return buf;
 }
 
-static char* do_power_delivered(handler_t inst, char* method, ...) {
+static char* do_total_power_received(handler_t inst, char* method, ...) {
+    va_list ap;
+    static char buf[256];
+    double t;
+
+    va_start(ap, method);
+
+	t = inst->dsmr->electr_power_received;
+	snprintf(buf, sizeof(buf), "%.3f", t);
+
+    va_end(ap);
+
+    return buf;
+}
+
+static char* do_phase_power_received(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
 
 	va_start(ap, method);
 
-	char* arg0 = va_arg(ap, char*);
-	//char* arg1 = va_arg(ap, char*);
+	(void) va_arg(ap, char*);
+	int arg1 = atoi(va_arg(ap, char*));
 
-	if (strcmp("/api/electricity/phases/1/power_delivered", arg0) == 0) {
+	if (arg1 == 1) {
+		t = inst->dsmr->electr_inst_active_power_recv_l1;
+	} else if (arg1 == 2) {
+		t = inst->dsmr->electr_inst_active_power_recv_l2;
+	} else {
+		t = inst->dsmr->electr_inst_active_power_recv_l3;
+	}
+	snprintf(buf, sizeof(buf), "%.3f", t);
+
+	va_end(ap);
+
+	return buf;
+}
+
+static char* do_phase_power_delivered(handler_t inst, char* method, ...) {
+	va_list ap;
+	static char buf[256];
+	double t;
+
+	va_start(ap, method);
+
+	(void) va_arg(ap, char*);
+	int arg1 = atoi(va_arg(ap, char*));
+
+	if (arg1 == 1) {
 		t = inst->dsmr->electr_inst_active_power_delv_l1;
-	} else if (strcmp("/api/electricity/phases/2/power_delivered", arg0) == 0) {
+	} else if (arg1 == 2) {
 		t = inst->dsmr->electr_inst_active_power_delv_l2;
 	} else {
 		t = inst->dsmr->electr_inst_active_power_delv_l3;
+	}
+	snprintf(buf, sizeof(buf), "%.3f", t);
+
+	va_end(ap);
+
+	return buf;
+}
+
+static char* do_phase_current(handler_t inst, char* method, ...) {
+	va_list ap;
+	static char buf[256];
+	double t;
+
+	va_start(ap, method);
+
+	(void) va_arg(ap, char*);
+	int arg1 = atoi(va_arg(ap, char*));
+
+	if (arg1 == 1) {
+		t = inst->dsmr->electr_inst_current_l1;
+	} else if (arg1 == 2) {
+		t = inst->dsmr->electr_inst_current_l2;
+	} else {
+		t = inst->dsmr->electr_inst_current_l3;
+	}
+	snprintf(buf, sizeof(buf), "%.3f", t);
+
+	va_end(ap);
+
+	return buf;
+}
+
+static char* do_phase_voltage(handler_t inst, char* method, ...) {
+	va_list ap;
+	static char buf[256];
+	double t;
+
+	va_start(ap, method);
+
+	(void) va_arg(ap, char*);
+	int arg1 = atoi(va_arg(ap, char*));
+
+	if (arg1 == 1) {
+		t = inst->dsmr->electr_inst_voltage_l1;
+	} else if (arg1 == 2) {
+		t = inst->dsmr->electr_inst_voltage_l2;
+	} else {
+		t = inst->dsmr->electr_inst_voltage_l3;
 	}
 	snprintf(buf, sizeof(buf), "%.3f", t);
 
@@ -408,12 +517,16 @@ struct {
 		char* (*f)(handler_t inst, char* method, ...);
 	} xx[5];
 } rest[] = {
-	{ "/api/electricity/tariff1",           {}, { { "GET", do_tariff1 } } },
-	{ "/api/electricity/tariff2",           {}, { { "GET", do_tariff1 } } },
+	{ "/api/electricity/tariff[12]",           {}, { { "GET", do_tariff1 } } },
 	{ "/api/electricity/tariffs/indicator", {}, { { "GET", do_indicator } } },
 	{ "/api/electricity/tariffs/[12]/delivered", {}, { { "GET", do_tariff_delivered } } },
-	{ "/api/electricity/phases/([123])/power_delivered", {}, { { "GET", do_power_delivered } } },
+	{ "/api/electricity/tariffs/[12]/received", {}, { { "GET", do_tariff_received } } },
+	{ "/api/electricity/phases/([123])/power_delivered", {}, { { "GET", do_phase_power_delivered } } },
+	{ "/api/electricity/phases/([123])/power_received", {}, { { "GET", do_phase_power_received } } },
+	{ "/api/electricity/phases/([123])/current", {}, { { "GET", do_phase_current } } },
+	{ "/api/electricity/phases/([123])/voltage", {}, { { "GET", do_phase_voltage } } },
 	{ "/api/electricity/power/delivered", {}, { { "GET", do_total_power_delivered } } },
+	{ "/api/electricity/power/received", {}, { { "GET", do_total_power_received } } },
 };
 
 int handler_callback(void* data, http_decoder_t decoder) {

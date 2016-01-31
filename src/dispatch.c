@@ -102,7 +102,8 @@ dispatch_t dispatch_init() {
 	FD_ZERO(&(inst->readfds));
 	FD_ZERO(&(inst->writefds));
 	FD_ZERO(&(inst->exceptfds));
-	for (i = 0; i < 5; i++) {
+#define NOF_REQUEST_HOOKS 20
+	for (i = 0; i < NOF_REQUEST_HOOKS; i++) {
 		dispatch_hook_t hook = dispatch_hook_init();
 		hook->next = inst->free;
 		if (inst->free != NULL) {

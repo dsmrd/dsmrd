@@ -92,75 +92,10 @@ out[i] = (buf[i*2] << 4) || buf[i*2+1];
 }
 */
 
-#define COSEM_DATA_TYPE_NULL_DATA 0
-#define COSEM_DATA_TYPE_BOOLEAN 3
-#define COSEM_DATA_TYPE_BIT_STRING 4
-#define COSEM_DATA_TYPE_DOUBLE_LONG 5
-#define COSEM_DATA_TYPE_DOUBLE_LONG_UNSIGNED 6
-#define COSEM_DATA_TYPE_FLOATING_POINT 7
-#define COSEM_DATA_TYPE_OCTET_STRING 9
-#define COSEM_DATA_TYPE_VISIBLE_STRING 10
-#define COSEM_DATA_TYPE_BCD 13
-#define COSEM_DATA_TYPE_INTEGER 15
-#define COSEM_DATA_TYPE_LONG 16
-#define COSEM_DATA_TYPE_UNSIGNED 17
-#define COSEM_DATA_TYPE_LONG_UNSIGNED 18
-#define COSEM_DATA_TYPE_LONG64 20
-#define COSEM_DATA_TYPE_LONG64_UNSIGNED 21
-#define COSEM_DATA_TYPE_ENUM 22
-#define COSEM_DATA_TYPE_FLOAT_32 23
-#define COSEM_DATA_TYPE_FLOAT_64 24
-
-typedef enum {
-	OBIS_VERSION,
-	OBIS_DATETIME_STAMP,
-	OBIS_EQUIPMENT_IDENTIFIER,
-	OBIS_ELECTR_TO_CLIENT_TARIFF1,
-	OBIS_ELECTR_TO_CLIENT_TARIFF2,
-	OBIS_ELECTR_BY_CLIENT_TARIFF1,
-	OBIS_ELECTR_BY_CLIENT_TARIFF2,
-	OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR,
-	OBIS_ELECTR_POWER_DELIVERED,
-	OBIS_ELECTR_POWER_RECEIVED,
-	OBIS_ELECTR_NOF_POWER_FAILURES,
-	OBIS_ELECTR_NOF_LONG_POWER_FAILURES,
-	OBIS_ELECTR_POWER_FAILURE_EVENT_LOG,
-	OBIS_ELECTR_NOF_VOLTAGE_SAGE_L1,
-	OBIS_ELECTR_NOF_VOLTAGE_SAGE_L2,
-	OBIS_ELECTR_NOF_VOLTAGE_SAGE_L3,
-	OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L1,
-	OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L2,
-	OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L3,
-	OBIS_ELECTR_TEXT_MESSAGE,
-	OBIS_ELECTR_INST_VOLTAGE_L1,
-	OBIS_ELECTR_INST_VOLTAGE_L2,
-	OBIS_ELECTR_INST_VOLTAGE_L3,
-	OBIS_ELECTR_INST_CURRENT_L1,
-	OBIS_ELECTR_INST_CURRENT_L2,
-	OBIS_ELECTR_INST_CURRENT_L3,
-	OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L1,
-	OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L2,
-	OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L3,
-	OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L1,
-	OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L2,
-	OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L3,
-	OBIS_DEVICE1_TYPE,
-	OBIS_DEVICE1_EQUIPMENT_IDENTIFIER,
-	OBIS_DEVICE1_LAST_5MIN_VALUE,
-	OBIS_DEVICE2_TYPE,
-	OBIS_DEVICE2_EQUIPMENT_IDENTIFIER,
-	OBIS_DEVICE2_LAST_5MIN_VALUE,
-	OBIS_DEVICE3_TYPE,
-	OBIS_DEVICE3_EQUIPMENT_IDENTIFIER,
-	OBIS_DEVICE3_LAST_5MIN_VALUE,
-	OBIS_DEVICE4_TYPE,
-	OBIS_DEVICE4_EQUIPMENT_IDENTIFIER,
-	OBIS_DEVICE4_LAST_5MIN_VALUE,
-} obis_id;
 
 struct obis_map_t {
 	char* reference;
-	obis_id key;
+	unsigned long key;
 } obis_map[] = {
 	{ "1-3:0.2.8",   OBIS_VERSION },
 	{ "0-0:1.0.0",   OBIS_DATETIME_STAMP },
@@ -361,9 +296,13 @@ static int dsmr_process() {
 					case OBIS_DATETIME_STAMP:
 						// Silently drop...
 						break;
+					default:
+						error("Implementation error");
 				}
 				if (rval != 0) {
 					error("Failed to decode");
+				} else {
+					dsmr_decoder.pkt->obis |= obis_map[j].key;
 				}
 			}
 		}
@@ -531,6 +470,7 @@ int dsmr_decode(char* buf, ssize_t len) {
 			case END_OF_REC:
 				dsmr_decoder.buffer[dsmr_decoder.row][dsmr_decoder.location] = '\0';
 				dsmr_process();
+dsmr_print(dsmr_decoder.pkt);
 				dsmr_decoder.location = 0;
 				dsmr_decoder.row = 0;
 				break;
@@ -542,16 +482,51 @@ int dsmr_decode(char* buf, ssize_t len) {
 }
 
 int dsmr_print(dsmr_t dsmr) {
+	printf("%32s: 0x%09lx\n", "bitmask", dsmr->obis);
+	printf("%32s: '%s'\n", "version", dsmr->version);
+	//time_t datetime_stamp;
+	printf("%32s: '%s'\n", "equipment_identifier", dsmr->equipment_identifier);
 	printf("%32s: %09.3f [kWh]\n", "electr_to_client_tariff1", dsmr->electr_to_client_tariff1);
 	printf("%32s: %09.3f [kWh]\n", "electr_to_client_tariff2", dsmr->electr_to_client_tariff2);
 	printf("%32s: %09.3f [kWh]\n", "electr_by_client_tariff1", dsmr->electr_by_client_tariff1);
 	printf("%32s: %09.3f [kWh]\n", "electr_by_client_tariff2", dsmr->electr_by_client_tariff2);
+	printf("%32s: '%s'\n", "electr_tariff_indicator", dsmr->electr_tariff_indicator);
 	printf("%32s: %05.3f [kW]\n", "electr_power_delivered", dsmr->electr_power_delivered);
 	printf("%32s: %05.3f [kW]\n", "electr_power_received", dsmr->electr_power_received);
+	printf("%32s: %d\n", "electr_nof_power_failures", dsmr->electr_nof_power_failures);
+	printf("%32s: %d\n", "electr_nof_long_power_failures", dsmr->electr_nof_long_power_failures);
+	//time_t electr_power_failure_event_log;
+	printf("%32s: %d\n", "electr_nof_voltage_sage_l1", dsmr->electr_nof_voltage_sage_l1);
+	printf("%32s: %d\n", "electr_nof_voltage_sage_l2", dsmr->electr_nof_voltage_sage_l2);
+	printf("%32s: %d\n", "electr_nof_voltage_sage_l3", dsmr->electr_nof_voltage_sage_l3);
+	printf("%32s: %d\n", "electr_nof_voltage_swells_l1", dsmr->electr_nof_voltage_swells_l1);
+	printf("%32s: %d\n", "electr_nof_voltage_swells_l2", dsmr->electr_nof_voltage_swells_l2);
+	printf("%32s: %d\n", "electr_nof_voltage_swells_l3", dsmr->electr_nof_voltage_swells_l3);
+	printf("%32s: '%s'\n", "electr_text_message", dsmr->electr_text_message);
+	printf("%32s: %04.1f [V]\n", "electr_inst_voltage_l1", dsmr->electr_inst_voltage_l1);
+	printf("%32s: %04.1f [V]\n", "electr_inst_voltage_l2", dsmr->electr_inst_voltage_l2);
+	printf("%32s: %04.1f [V]\n", "electr_inst_voltage_l3", dsmr->electr_inst_voltage_l3);
 	printf("%32s: %03.0f [A]\n", "electr_inst_current_l1", dsmr->electr_inst_current_l1);
 	printf("%32s: %03.0f [A]\n", "electr_inst_current_l2", dsmr->electr_inst_current_l2);
 	printf("%32s: %03.0f [A]\n", "electr_inst_current_l3", dsmr->electr_inst_current_l3);
-	printf("%32s: %d\n", "electr_nof_power_failures", dsmr->electr_nof_power_failures);
+	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_delv_l1", dsmr->electr_inst_active_power_delv_l1);
+	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_delv_l2", dsmr->electr_inst_active_power_delv_l2);
+	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_delv_l3", dsmr->electr_inst_active_power_delv_l3);
+	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_recv_l1", dsmr->electr_inst_active_power_recv_l1);
+	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_recv_l2", dsmr->electr_inst_active_power_recv_l2);
+	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_recv_l3", dsmr->electr_inst_active_power_recv_l3);
+	printf("%32s: %d\n", "device1_type", dsmr->device1_type);
+	printf("%32s: '%s'\n", "device1_equipment_identifier", dsmr->device1_equipment_identifier);
+	printf("%32s: %f\n", "device1_last_5min_value", dsmr->device1_last_5min_value);
+	printf("%32s: %d\n", "device2_type", dsmr->device2_type);
+	printf("%32s: '%s'\n", "device2_equipment_identifier", dsmr->device2_equipment_identifier);
+	printf("%32s: %f\n", "device2_last_5min_value", dsmr->device2_last_5min_value);
+	printf("%32s: %d\n", "device3_type", dsmr->device3_type);
+	printf("%32s: '%s'\n", "device3_equipment_identifier", dsmr->device3_equipment_identifier);
+	printf("%32s: %f\n", "device3_last_5min_value", dsmr->device3_last_5min_value);
+	printf("%32s: %d\n", "device4_type", dsmr->device4_type);
+	printf("%32s: '%s'\n", "device4_equipment_identifier", dsmr->device4_equipment_identifier);
+	printf("%32s: %f\n", "device4_last_5min_value", dsmr->device4_last_5min_value);
 
 	return 0;
 }

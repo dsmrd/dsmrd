@@ -85,24 +85,25 @@ struct struct_handler_t {
 int handler_read(void*);
 
 
-static http_decoder_t http_decoder_init(int (callback)(void*, http_decoder_t), void* data) {
+static /*@null@*/ http_decoder_t http_decoder_init(int (callback)(void*, http_decoder_t), void* data) {
 	http_decoder_t inst;
 	int rval;
 
 	inst = (http_decoder_t) calloc(sizeof(struct struct_http_decoder_t), 1);
+	if (inst != 0) {
+		rval = regcomp(&inst->regex_request, "^\\([^ ]*\\) \\([^ ]*\\) \\(.*\\)$", 0);
+		if (rval != 0) {
+			error("regcomp");
+		}
 
-	rval = regcomp(&inst->regex_request, "^\\([^ ]*\\) \\([^ ]*\\) \\(.*\\)$", 0);
-	if (rval != 0) {
-		error("regcomp");
+		rval = regcomp(&inst->regex_header, "^\\([^:]*\\): \\(.*\\)$", 0);
+		if (rval != 0) {
+			error("regcomp");
+		}
+
+		inst->callback = callback;
+		inst->data = data;
 	}
-
-	rval = regcomp(&inst->regex_header, "^\\([^:]*\\): \\(.*\\)$", 0);
-	if (rval != 0) {
-		error("regcomp");
-	}
-
-	inst->callback = callback;
-	inst->data = data;
 
 	return inst;
 }
@@ -114,8 +115,8 @@ static int http_decoder_exit(http_decoder_t inst) {
 	return 0;
 }
 
-static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (callback)(http_decoder_t)) {
-	int i;
+static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len) {
+	ssize_t i;
 	for (i = 0; i < len; i++) {
 		http_decoder_action_t action = COPY;
 		switch (inst->state) {
@@ -135,7 +136,7 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (c
 			case HEADER:
 				switch (buf[i]) {
 					case '\n':
-						if (inst->startline) {
+						if (inst->startline != 0) {
 							if (inst->http_content_length != 0) {
 								inst->state = DATA;
 								action = DROP;
@@ -193,8 +194,8 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (c
 					if (j != 0) {
 						error("regexec");
 					} else {
-						regsubstr(inst->request_method, sizeof(inst->request_method), inst->buf, pmatch, 1);
-						regsubstr(inst->request_uri, sizeof(inst->request_uri), inst->buf, pmatch, 2);
+						(void) regsubstr(inst->request_method, sizeof(inst->request_method), inst->buf, pmatch, 1);
+						(void) regsubstr(inst->request_uri, sizeof(inst->request_uri), inst->buf, pmatch, 2);
 
 						debug("METHOD='%s'", inst->request_method);
 						debug("RESOURCE='%s'", inst->request_uri);
@@ -214,8 +215,8 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (c
 					} else {
 						char tag[256];
 						char val[256];
-						regsubstr(tag, sizeof(tag), inst->buf, pmatch, 1);
-						regsubstr(val, sizeof(val), inst->buf, pmatch, 2);
+						(void) regsubstr(tag, sizeof(tag), inst->buf, pmatch, 1);
+						(void) regsubstr(val, sizeof(val), inst->buf, pmatch, 2);
 
 						if (strcmp(tag, "Content-Length") == 0) {
 							inst->http_content_length = atoi(val);
@@ -225,7 +226,7 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (c
 				break;
 			case HANDLE_REQUEST:
 				debug("REQUEST FINISHED");
-				inst->callback(inst->data, inst);
+				(void) inst->callback(inst->data, inst);
 				inst->len = 0;
 				break;
 		}
@@ -234,47 +235,50 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (c
 	return 0;
 }
 
-static int http_response_index(handler_t inst, char* method) {
+static int http_response_index(handler_t inst, /*@unused@*/ char* method) {
 	char index[PATH_MAX];
 	char buf[16*2014];
 	char b2[16*2014];
+	int fd;
+	ssize_t rval;
 
-	snprintf(index, sizeof(index), "%s/%s", options.wwwdir, "index.html");
-	int fd = open(index, O_RDONLY);
+	(void) snprintf(index, sizeof(index), "%s/%s", options.wwwdir, "index.html");
+	fd = open(index, O_RDONLY);
 	if (fd < 0) {
 		error("Open error '%s'", index);
 	}
-	int rval = read(fd, b2, sizeof(b2));
+	rval = read(fd, b2, sizeof(b2));
 	if (rval < 0) {
 		error("Read error");
 	}
-	close(fd);
+	(void) close(fd);
 
-	snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
+	(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
 
 	rval = write(inst->fd, buf, strlen(buf));
 	if (rval < 0) {
 		error("Cannot write result");
 	}
 
-	return rval;
+	return (int) rval;
 }
 
 static char* http_response_tariff1(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[16*2014];
 	double t;
+	char* arg0;
 
 	va_start(ap, method);
 
-	char* arg0 = va_arg(ap, char*);
+	arg0 = va_arg(ap, char*);
 
 	if (strcmp("/api/electricity/tariff1", arg0) == 0) {
 		t = inst->dsmr->electr_to_client_tariff1;
 	} else {
 		t = inst->dsmr->electr_to_client_tariff2;
 	}
-	snprintf(buf, sizeof(buf), "{ \"value\": %.3f, \"unit\": \"%s\" }", t, "kWh");
+	(void) snprintf(buf, sizeof(buf), "{ \"value\": %.3f, \"unit\": \"%s\" }", t, "kWh");
 
 	va_end(ap);
 
@@ -285,10 +289,11 @@ static char* http_response_tariff_received(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
+	char* arg0;
 
 	va_start(ap, method);
 
-	char* arg0 = va_arg(ap, char*);
+	arg0 = va_arg(ap, char*);
 	//int arg1 = atoi(va_arg(ap, char*));
 
 	if (strcmp("/api/electricity/tariffs/1/received", arg0) == 0) {
@@ -297,7 +302,7 @@ static char* http_response_tariff_received(handler_t inst, char* method, ...) {
 	} else {
 		t = inst->dsmr->electr_by_client_tariff2;
 	}
-	snprintf(buf, sizeof(buf), "%.3f", t);
+	(void) snprintf(buf, sizeof(buf), "%.3f", t);
 
 	va_end(ap);
 
@@ -308,10 +313,11 @@ static char* http_response_tariff_delivered(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
+	char* arg0;
 
 	va_start(ap, method);
 
-	char* arg0 = va_arg(ap, char*);
+	arg0 = va_arg(ap, char*);
 	//int arg1 = atoi(va_arg(ap, char*));
 
 	if (strcmp("/api/electricity/tariffs/1/delivered", arg0) == 0) {
@@ -320,7 +326,7 @@ static char* http_response_tariff_delivered(handler_t inst, char* method, ...) {
 	} else {
 		t = inst->dsmr->electr_to_client_tariff2;
 	}
-	snprintf(buf, sizeof(buf), "%.3f", t);
+	(void) snprintf(buf, sizeof(buf), "%.3f", t);
 
 	va_end(ap);
 
@@ -335,7 +341,7 @@ static char* http_response_total_power_delivered(handler_t inst, char* method, .
 	va_start(ap, method);
 
 	t = inst->dsmr->electr_power_delivered;
-	snprintf(buf, sizeof(buf), "%.3f", t);
+	(void) snprintf(buf, sizeof(buf), "%.3f", t);
 
 	va_end(ap);
 
@@ -350,7 +356,7 @@ static char* http_response_total_power_received(handler_t inst, char* method, ..
 	va_start(ap, method);
 
 	t = inst->dsmr->electr_power_received;
-	snprintf(buf, sizeof(buf), "%.3f", t);
+	(void) snprintf(buf, sizeof(buf), "%.3f", t);
 
 	va_end(ap);
 
@@ -361,11 +367,12 @@ static char* http_response_phase_power_received(handler_t inst, char* method, ..
 	va_list ap;
 	static char buf[256];
 	double t;
+	int arg1;
 
 	va_start(ap, method);
 
 	(void) va_arg(ap, char*);
-	int arg1 = atoi(va_arg(ap, char*));
+	arg1 = atoi(va_arg(ap, char*));
 
 	if (arg1 == 1) {
 		t = inst->dsmr->electr_inst_active_power_recv_l1;
@@ -374,7 +381,7 @@ static char* http_response_phase_power_received(handler_t inst, char* method, ..
 	} else {
 		t = inst->dsmr->electr_inst_active_power_recv_l3;
 	}
-	snprintf(buf, sizeof(buf), "%.3f", t);
+	(void) snprintf(buf, sizeof(buf), "%.3f", t);
 
 	va_end(ap);
 
@@ -385,11 +392,12 @@ static char* http_response_phase_power_delivered(handler_t inst, char* method, .
 	va_list ap;
 	static char buf[256];
 	double t;
+	int arg1;
 
 	va_start(ap, method);
 
 	(void) va_arg(ap, char*);
-	int arg1 = atoi(va_arg(ap, char*));
+	arg1 = atoi(va_arg(ap, char*));
 
 	if (arg1 == 1) {
 		t = inst->dsmr->electr_inst_active_power_delv_l1;
@@ -398,7 +406,7 @@ static char* http_response_phase_power_delivered(handler_t inst, char* method, .
 	} else {
 		t = inst->dsmr->electr_inst_active_power_delv_l3;
 	}
-	snprintf(buf, sizeof(buf), "%.3f", t);
+	(void) snprintf(buf, sizeof(buf), "%.3f", t);
 
 	va_end(ap);
 
@@ -409,11 +417,12 @@ static char* http_response_phase_current(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
+	int arg1;
 
 	va_start(ap, method);
 
 	(void) va_arg(ap, char*);
-	int arg1 = atoi(va_arg(ap, char*));
+	arg1 = atoi(va_arg(ap, char*));
 
 	if (arg1 == 1) {
 		t = inst->dsmr->electr_inst_current_l1;
@@ -422,7 +431,7 @@ static char* http_response_phase_current(handler_t inst, char* method, ...) {
 	} else {
 		t = inst->dsmr->electr_inst_current_l3;
 	}
-	snprintf(buf, sizeof(buf), "%.3f", t);
+	(void) snprintf(buf, sizeof(buf), "%.3f", t);
 
 	va_end(ap);
 
@@ -433,11 +442,12 @@ static char* http_response_phase_voltage(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
+	int arg1;
 
 	va_start(ap, method);
 
 	(void) va_arg(ap, char*);
-	int arg1 = atoi(va_arg(ap, char*));
+	arg1 = atoi(va_arg(ap, char*));
 
 	if (arg1 == 1) {
 		t = inst->dsmr->electr_inst_voltage_l1;
@@ -446,7 +456,7 @@ static char* http_response_phase_voltage(handler_t inst, char* method, ...) {
 	} else {
 		t = inst->dsmr->electr_inst_voltage_l3;
 	}
-	snprintf(buf, sizeof(buf), "%.3f", t);
+	(void) snprintf(buf, sizeof(buf), "%.3f", t);
 
 	va_end(ap);
 
@@ -460,13 +470,14 @@ static char* http_response_indicator(handler_t inst, char* method, ...) {
 	va_start(ap, method);
 
 	//snprintf(buf, sizeof(buf), "%s", inst->dsmr->electr_tariff_indicator);
-	snprintf(buf, sizeof(buf), "%d", inst->dsmr->electr_tariff_indicator);
+	(void) snprintf(buf, sizeof(buf), "%d", inst->dsmr->electr_tariff_indicator);
 
 	va_end(ap);
 
 	return buf;
 }
 
+static int rest_inited = 0;
 struct {
 	char* resource;
 	regex_t regex;
@@ -487,7 +498,7 @@ struct {
 	{ "/api/electricity/power/received", {}, { { "GET", http_response_total_power_received } } },
 };
 
-int handler_callback(void* data, http_decoder_t decoder) {
+static int handler_callback(void* data, http_decoder_t decoder) {
 	handler_t inst = (handler_t) data;
 	char buf[16*2014];
 	int rval = 0;
@@ -501,7 +512,6 @@ int handler_callback(void* data, http_decoder_t decoder) {
 		int i, j=0;
 
 		for (i=0; i<sizeof(rest)/sizeof(rest[0]); i++) {
-			rval = regcomp(&rest[i].regex, rest[i].resource, REG_EXTENDED);
 			if (0 == regexec(&rest[i].regex, decoder->request_uri, 5, pmatch, 0)) {
 				for (j=0; j<sizeof(rest[i].xx)/sizeof(rest[0].xx[i]); j++) {
 					if (strcmp(rest[i].xx[j].method, decoder->request_method) == 0) {
@@ -514,7 +524,7 @@ int handler_callback(void* data, http_decoder_t decoder) {
 
 		if (i == sizeof(rest)/sizeof(rest[0])) {
 			debug("404 Not found");
-			snprintf(buf, sizeof(buf), "HTTP/1.1 404 Not found\r\nContent-Length: 0\r\n\r\n");
+			(void) snprintf(buf, sizeof(buf), "HTTP/1.1 404 Not found\r\nContent-Length: 0\r\n\r\n");
 			rval = write(inst->fd, buf, strlen(buf));
 			if (rval < 0) {
 				error("Cannot write 404");
@@ -522,7 +532,7 @@ int handler_callback(void* data, http_decoder_t decoder) {
 		} else {
 			if (j == sizeof(rest[i].xx)/sizeof(rest[0].xx[i])) {
 				debug("405 Method Not Allowed");
-				snprintf(buf, sizeof(buf), "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n");
+				(void) snprintf(buf, sizeof(buf), "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n");
 				rval = write(inst->fd, buf, strlen(buf));
 				if (rval < 0) {
 					error("Cannot write 405");
@@ -534,13 +544,13 @@ int handler_callback(void* data, http_decoder_t decoder) {
 				char arg1[256];
 				char arg2[256];
 
-				regsubstr(arg0, sizeof(arg0), decoder->request_uri, pmatch, 0);
-				regsubstr(arg1, sizeof(arg1), decoder->request_uri, pmatch, 1);
-				regsubstr(arg2, sizeof(arg2), decoder->request_uri, pmatch, 2);
+				(void) regsubstr(arg0, sizeof(arg0), decoder->request_uri, pmatch, 0);
+				(void) regsubstr(arg1, sizeof(arg1), decoder->request_uri, pmatch, 1);
+				(void) regsubstr(arg2, sizeof(arg2), decoder->request_uri, pmatch, 2);
 
 				b2 = rest[i].xx[j].f(inst, NULL /*decoder->request_uri*/, arg0, arg1, arg2);
 
-				snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
+				(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
 				rval = write(inst->fd, buf, strlen(buf));
 				if (rval < 0) {
 					error("Cannot write result");
@@ -554,11 +564,22 @@ int handler_callback(void* data, http_decoder_t decoder) {
 
 handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) {
 	handler_t inst;
+	int i;
+
 	inst = (handler_t) calloc(sizeof(struct struct_handler_t), 1);
 	inst->fd = newsockfd;
 	inst->addr = cli_addr;
 	inst->dsmr = dsmr;
+
+	if (!rest_inited) {
+		for (i=0; i<sizeof(rest)/sizeof(rest[0]); i++) {
+			(void) regcomp(&rest[i].regex, rest[i].resource, REG_EXTENDED);
+		}
+		rest_inited = 1;
+	}
+
 	debug("Handler init");
+
 	return inst;
 }
 
@@ -582,7 +603,7 @@ int handler_read(void* data) {
 		debug("Read %d", len);
 		len = -1;
 	} else {
-		len = http_decoder_read(inst->decoder, buf, len, NULL);
+		len = http_decoder_read(inst->decoder, buf, len);
 	}
 
 	return len;

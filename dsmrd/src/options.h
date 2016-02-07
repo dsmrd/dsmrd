@@ -58,6 +58,7 @@ struct struct_options_t {
 	int baud;
 	int port;
 	int is_tty;
+	int ignore_crc;
 	options_startbits_t startbits;
 	options_parity_t parity;
 	options_stopbits_t stopbits;

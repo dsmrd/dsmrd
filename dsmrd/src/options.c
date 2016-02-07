@@ -57,8 +57,11 @@ options_t options_init(int argc, char* argv[]) {
 	options.is_tty = 1;
 	strncpy(options.tty, "tty", sizeof(options.tty));
 
-	while ((opt = getopt(argc, argv, "Deol:s:p:tv")) != -1) {
+	while ((opt = getopt(argc, argv, "cDeol:s:p:tv")) != -1) {
 		switch (opt) {
+			case 'c':
+				options.ignore_crc = 1;
+				break;
 			case 'D':
 				options.daemonize = 0;
 				break;

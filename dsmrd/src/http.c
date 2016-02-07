@@ -47,7 +47,7 @@ typedef enum {
 	HEADER,
 	DATA,
 	DONE
-} http_state_t;
+} http_decoder_state_t;
 
 typedef enum {
 	COPY,
@@ -55,14 +55,14 @@ typedef enum {
 	PARSE_REQUEST,
 	PARSE_HEADER,
 	HANDLE_REQUEST
-} http_action_t;
+} http_decoder_action_t;
 
 typedef struct struct_http_decoder_t* http_decoder_t;
 
 struct struct_http_decoder_t {
 	int len;
 	int startline;
-	http_state_t state;
+	http_decoder_state_t state;
 	char request_method[32];
 	char request_uri[256];
 	int http_content_length;
@@ -74,8 +74,18 @@ struct struct_http_decoder_t {
 	void* data;
 };
 
+struct struct_handler_t {
+	int fd;
+	struct sockaddr_in addr;
+	http_decoder_t decoder;
+	dsmr_t dsmr;
+	dispatch_t dis;
+};
 
-http_decoder_t http_decoder_init(int (callback)(void*, http_decoder_t), void* data) {
+int handler_read(void*);
+
+
+static http_decoder_t http_decoder_init(int (callback)(void*, http_decoder_t), void* data) {
 	http_decoder_t inst;
 	int rval;
 
@@ -97,41 +107,36 @@ http_decoder_t http_decoder_init(int (callback)(void*, http_decoder_t), void* da
 	return inst;
 }
 
-int http_decoder_exit(http_decoder_t inst) {
+static int http_decoder_exit(http_decoder_t inst) {
 	regfree(&inst->regex_request);
 	regfree(&inst->regex_header);
 	free(inst);
 	return 0;
 }
 
-int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (callback)(http_decoder_t)) {
+static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (callback)(http_decoder_t)) {
 	int i;
 	for (i = 0; i < len; i++) {
-		http_action_t action = COPY;
+		http_decoder_action_t action = COPY;
 		switch (inst->state) {
 			case REQUEST:
 				switch (buf[i]) {
 					case '\n':
-						//printf("<LF>\n--HEADER--\n");
 						inst->state = HEADER;
 						action = PARSE_REQUEST;
 						break;
 					case '\r':
-						//printf("<CR>");
 						action = DROP;
 						break;
 					default:
-						//printf("%c", buf[i]);
 						break;
 				}
 				break;
 			case HEADER:
 				switch (buf[i]) {
 					case '\n':
-						//printf("<H-LF>\n");
 						if (inst->startline) {
 							if (inst->http_content_length != 0) {
-								//printf("--DATA--\n");
 								inst->state = DATA;
 								action = DROP;
 							} else {
@@ -143,16 +148,13 @@ int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (callback
 						}
 						break;
 					case '\r':
-						//printf("<H-CR>");
 						action = DROP;
 						break;
 					default:
-						//printf("%c", buf[i]);
 						break;
 				}
 				break;
 			case DATA:
-				//printf("%c", buf[i]);
 				inst->dataread++;
 				if (inst->dataread == inst->http_content_length) {
 					debug("data received %d bytes", inst->dataread);
@@ -181,7 +183,6 @@ int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (callback
 				break;
 			case PARSE_REQUEST:
 				inst->buf[inst->len] = '\0';
-				//printf("REQUEST: %s\n", inst->buf);
 				inst->len = 0;
 
 				{
@@ -202,7 +203,6 @@ int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (callback
 				break;
 			case PARSE_HEADER:
 				inst->buf[inst->len] = '\0';
-				//printf("HEADER: %s\n", inst->buf);
 				inst->len = 0;
 				{
 					int j;
@@ -217,11 +217,8 @@ int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (callback
 						regsubstr(tag, sizeof(tag), inst->buf, pmatch, 1);
 						regsubstr(val, sizeof(val), inst->buf, pmatch, 2);
 
-						//debug("TAG='%s'", tag);
-						//debug("VAL='%s'", val);
 						if (strcmp(tag, "Content-Length") == 0) {
 							inst->http_content_length = atoi(val);
-							//debug("contlen=%d", inst->http_content_length);
 						}
 					}
 				}
@@ -233,41 +230,11 @@ int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (callback
 				break;
 		}
 	}
-	//printf("\n");
 
 	return 0;
 }
 
-
-
-
-
-
-
-
-
-struct struct_handler_t {
-	int fd;
-	struct sockaddr_in addr;
-	http_decoder_t decoder;
-	dsmr_t dsmr;
-	dispatch_t dis;
-};
-
-int handler_read(void*);
-
-handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) {
-	handler_t inst;
-	inst = (handler_t) calloc(sizeof(struct struct_handler_t), 1);
-	inst->fd = newsockfd;
-	inst->addr = cli_addr;
-	inst->dsmr = dsmr;
-	debug("Handler init");
-	return inst;
-}
-
-
-static int do_index(handler_t inst, char* method) {
+static int http_response_index(handler_t inst, char* method) {
 	char index[PATH_MAX];
 	char buf[16*2014];
 	char b2[16*2014];
@@ -293,7 +260,7 @@ static int do_index(handler_t inst, char* method) {
 	return rval;
 }
 
-static char* do_tariff1(handler_t inst, char* method, ...) {
+static char* http_response_tariff1(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[16*2014];
 	double t;
@@ -314,7 +281,7 @@ static char* do_tariff1(handler_t inst, char* method, ...) {
 	return buf;
 }
 
-static char* do_tariff_received(handler_t inst, char* method, ...) {
+static char* http_response_tariff_received(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
@@ -337,7 +304,7 @@ static char* do_tariff_received(handler_t inst, char* method, ...) {
 	return buf;
 }
 
-static char* do_tariff_delivered(handler_t inst, char* method, ...) {
+static char* http_response_tariff_delivered(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
@@ -360,7 +327,7 @@ static char* do_tariff_delivered(handler_t inst, char* method, ...) {
 	return buf;
 }
 
-static char* do_total_power_delivered(handler_t inst, char* method, ...) {
+static char* http_response_total_power_delivered(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
@@ -375,7 +342,7 @@ static char* do_total_power_delivered(handler_t inst, char* method, ...) {
 	return buf;
 }
 
-static char* do_total_power_received(handler_t inst, char* method, ...) {
+static char* http_response_total_power_received(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
@@ -390,7 +357,7 @@ static char* do_total_power_received(handler_t inst, char* method, ...) {
 	return buf;
 }
 
-static char* do_phase_power_received(handler_t inst, char* method, ...) {
+static char* http_response_phase_power_received(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
@@ -414,7 +381,7 @@ static char* do_phase_power_received(handler_t inst, char* method, ...) {
 	return buf;
 }
 
-static char* do_phase_power_delivered(handler_t inst, char* method, ...) {
+static char* http_response_phase_power_delivered(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
@@ -438,7 +405,7 @@ static char* do_phase_power_delivered(handler_t inst, char* method, ...) {
 	return buf;
 }
 
-static char* do_phase_current(handler_t inst, char* method, ...) {
+static char* http_response_phase_current(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
@@ -462,7 +429,7 @@ static char* do_phase_current(handler_t inst, char* method, ...) {
 	return buf;
 }
 
-static char* do_phase_voltage(handler_t inst, char* method, ...) {
+static char* http_response_phase_voltage(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 	double t;
@@ -486,7 +453,7 @@ static char* do_phase_voltage(handler_t inst, char* method, ...) {
 	return buf;
 }
 
-static char* do_indicator(handler_t inst, char* method, ...) {
+static char* http_response_indicator(handler_t inst, char* method, ...) {
 	va_list ap;
 	static char buf[256];
 
@@ -508,16 +475,16 @@ struct {
 		char* (*f)(handler_t inst, char* method, ...);
 	} xx[5];
 } rest[] = {
-	{ "/api/electricity/tariff[12]",           {}, { { "GET", do_tariff1 } } },
-	{ "/api/electricity/tariffs/indicator", {}, { { "GET", do_indicator } } },
-	{ "/api/electricity/tariffs/[12]/delivered", {}, { { "GET", do_tariff_delivered } } },
-	{ "/api/electricity/tariffs/[12]/received", {}, { { "GET", do_tariff_received } } },
-	{ "/api/electricity/phases/([123])/power_delivered", {}, { { "GET", do_phase_power_delivered } } },
-	{ "/api/electricity/phases/([123])/power_received", {}, { { "GET", do_phase_power_received } } },
-	{ "/api/electricity/phases/([123])/current", {}, { { "GET", do_phase_current } } },
-	{ "/api/electricity/phases/([123])/voltage", {}, { { "GET", do_phase_voltage } } },
-	{ "/api/electricity/power/delivered", {}, { { "GET", do_total_power_delivered } } },
-	{ "/api/electricity/power/received", {}, { { "GET", do_total_power_received } } },
+	{ "/api/electricity/tariff[12]",           {}, { { "GET", http_response_tariff1 } } },
+	{ "/api/electricity/tariffs/indicator", {}, { { "GET", http_response_indicator } } },
+	{ "/api/electricity/tariffs/[12]/delivered", {}, { { "GET", http_response_tariff_delivered } } },
+	{ "/api/electricity/tariffs/[12]/received", {}, { { "GET", http_response_tariff_received } } },
+	{ "/api/electricity/phases/([123])/power_delivered", {}, { { "GET", http_response_phase_power_delivered } } },
+	{ "/api/electricity/phases/([123])/power_received", {}, { { "GET", http_response_phase_power_received } } },
+	{ "/api/electricity/phases/([123])/current", {}, { { "GET", http_response_phase_current } } },
+	{ "/api/electricity/phases/([123])/voltage", {}, { { "GET", http_response_phase_voltage } } },
+	{ "/api/electricity/power/delivered", {}, { { "GET", http_response_total_power_delivered } } },
+	{ "/api/electricity/power/received", {}, { { "GET", http_response_total_power_received } } },
 };
 
 int handler_callback(void* data, http_decoder_t decoder) {
@@ -528,7 +495,7 @@ int handler_callback(void* data, http_decoder_t decoder) {
 	info("Served %s %s", decoder->request_method, decoder->request_uri);
 
 	if (strncmp("/api", decoder->request_uri, 4) != 0) {
-		do_index(inst, decoder->request_uri);
+		http_response_index(inst, decoder->request_uri);
 	} else {
 		regmatch_t pmatch[5];
 		int i, j=0;
@@ -566,8 +533,6 @@ int handler_callback(void* data, http_decoder_t decoder) {
 				char arg0[256];
 				char arg1[256];
 				char arg2[256];
-				//char arg3[256];
-				//char arg4[256];
 
 				regsubstr(arg0, sizeof(arg0), decoder->request_uri, pmatch, 0);
 				regsubstr(arg1, sizeof(arg1), decoder->request_uri, pmatch, 1);
@@ -587,6 +552,16 @@ int handler_callback(void* data, http_decoder_t decoder) {
 	return rval;
 }
 
+handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) {
+	handler_t inst;
+	inst = (handler_t) calloc(sizeof(struct struct_handler_t), 1);
+	inst->fd = newsockfd;
+	inst->addr = cli_addr;
+	inst->dsmr = dsmr;
+	debug("Handler init");
+	return inst;
+}
+
 int handler_open(handler_t inst, dispatch_t dis) {
 	debug("Handler open");
 	inst->decoder = http_decoder_init(handler_callback, inst);
@@ -603,8 +578,6 @@ int handler_read(void* data) {
 	debug("Handler read");
 
 	len = read(inst->fd, buf, sizeof(buf)-1);
-	//buf[nread] = '\0';
-	//printf("%s", buf);
 	if (len < 1) {
 		debug("Read %d", len);
 		len = -1;

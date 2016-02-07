@@ -51,7 +51,7 @@ int logging_exit() {
 	return 0;
 }
 
-int error(const char* fmt, ...) {
+void error(const char* fmt, ...) {
 	char buf[256];
 	va_list ap;
 
@@ -63,11 +63,9 @@ int error(const char* fmt, ...) {
 		vsyslog(LOG_ERR, fmt, ap);
 	}
 	va_end(ap);
-
-	return 0;
 }
 
-int warning(const char* fmt, ...) {
+void warning(const char* fmt, ...) {
 	char buf[256];
 	va_list ap;
 
@@ -81,11 +79,9 @@ int warning(const char* fmt, ...) {
 		vsyslog(LOG_WARNING, fmt, ap);
 	}
 	va_end(ap);
-
-	return 0;
 }
 
-int info(const char* fmt, ...) {
+void info(const char* fmt, ...) {
 	char buf[256];
 	va_list ap;
 
@@ -99,11 +95,9 @@ int info(const char* fmt, ...) {
 		vsyslog(LOG_INFO, fmt, ap);
 	}
 	va_end(ap);
-
-	return 0;
 }
 
-int debug(const char* fmt, ...) {
+void debug(const char* fmt, ...) {
 	char buf[256];
 	va_list ap;
 
@@ -117,7 +111,5 @@ int debug(const char* fmt, ...) {
 		vsyslog(LOG_DEBUG, fmt, ap);
 	}
 	va_end(ap);
-
-	return 0;
 }
 

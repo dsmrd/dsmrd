@@ -39,6 +39,7 @@
 #include "accept.h"
 #include "http.h"
 #include "options.h"
+#include "util.h"
 
 
 typedef enum {
@@ -101,17 +102,6 @@ int http_decoder_exit(http_decoder_t inst) {
 	regfree(&inst->regex_header);
 	free(inst);
 	return 0;
-}
-
-static char* regsubstr(char* dest, size_t n, const char* string, regmatch_t pmatch[], int idx) {
-	int eo = pmatch[idx].rm_eo;
-	int so = pmatch[idx].rm_so;
-	int len = eo - so;
-	int min = (len < (n-1)) ? len : (n-1);
-	if (so == -1) { return NULL; }
-	strncpy(dest, string+so, min);
-	dest[min] = '\0';
-	return dest;
 }
 
 int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len, int (callback)(http_decoder_t)) {

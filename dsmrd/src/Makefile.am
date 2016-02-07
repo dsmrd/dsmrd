@@ -37,6 +37,8 @@ dsmrd_SOURCES += accept.h
 dsmrd_SOURCES += accept.c
 dsmrd_SOURCES += http.h
 dsmrd_SOURCES += http.c
+dsmrd_SOURCES += util.h
+dsmrd_SOURCES += util.c
 
 noinst_PROGRAMS = p1sim
 p1sim_SOURCES = p1sim.c

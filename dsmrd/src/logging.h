@@ -24,10 +24,10 @@
 
 int logging_init(int to_syslog, int verbose, char* ident, int facility);
 int logging_exit();
-int error(const char* fmt, ...);
-int warning(const char* fmt, ...);
-int info(const char* fmt, ...);
-int debug(const char* fmt, ...);
+void error(const char* fmt, ...);
+void warning(const char* fmt, ...);
+void info(const char* fmt, ...);
+void debug(const char* fmt, ...);
 
 #endif // LOGGING_H
 

@@ -39,7 +39,7 @@
 #define OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L1		0x0000000000010000UL
 #define OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L2		0x0000000000020000UL
 #define OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L3		0x0000000000040000UL
-#define OBIS_ELECTR_TEXT_MESSAGE				0x0000000000080000UL
+#define OBIS_ELECTR_TEXT_MESSAGE0				0x0000000000080000UL
 #define OBIS_ELECTR_INST_VOLTAGE_L1				0x0000000000100000UL
 #define OBIS_ELECTR_INST_VOLTAGE_L2				0x0000000000200000UL
 #define OBIS_ELECTR_INST_VOLTAGE_L3				0x0000000000400000UL
@@ -64,6 +64,7 @@
 #define OBIS_DEVICE4_TYPE						0x0000010000000000UL
 #define OBIS_DEVICE4_EQUIPMENT_IDENTIFIER		0x0000020000000000UL
 #define OBIS_DEVICE4_LAST_5MIN_VALUE			0x0000040000000000UL
+#define OBIS_ELECTR_TEXT_MESSAGE1				0x8000000000000000UL
 
 #define OBIS_VERSION_LENGTH			2
 #define OBIS_TARIFF_IND_LENGTH		4
@@ -79,7 +80,8 @@ struct struct_dsmr_t {
 	double electr_to_client_tariff2;
 	double electr_by_client_tariff1;
 	double electr_by_client_tariff2;
-	char   electr_tariff_indicator[(OBIS_TARIFF_IND_LENGTH/2)+1]; // S4
+	//char   electr_tariff_indicator[(OBIS_TARIFF_IND_LENGTH/2)+1]; // S4
+	int    electr_tariff_indicator;
 	double electr_power_delivered;
 	double electr_power_received;
 	int    electr_nof_power_failures;

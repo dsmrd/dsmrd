@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <regex.h>
+#include <time.h>
 #include "dsmr.h"
 #include "logging.h"
 
@@ -35,19 +36,22 @@ static char* subnstr(char* dest, const char* string, int so, int eo, size_t n) {
 }
 
 typedef enum {
-	UNSET = 0,
-	START = 1,
-	SEP = 2,
-	DATA = 3,
-	EOR = 4,
-	TRAIL = 5,
+	STATE_UNDEF = 0,
+	STATE_START = 1,
+	STATE_SEPARATOR = 2,
+	STATE_DATA = 3,
+	STATE_END_TRANS = 4,
+	STATE_END_TRANS_CRC = 5,
+	STATE_TRAILER = 6,
 } dsmr_state_t;
 
 typedef enum {
-	COPY = 0,
-	DROP = 1,
-	TERMINATE = 2,
-	END_OF_REC = 3,
+	ACTION_UNDEF = 0,
+	ACTION_BUFFER_FIELD = 1,
+	ACTION_NONE = 2,
+	ACTION_TERMINATE_FIELD = 3,
+	ACTION_PROCESS_RECORD = 4,
+	ACTION_BUFFER_CRC = 5,
 } dsmr_action_t;
 
 struct struct_dsmr_decoder_t {
@@ -56,12 +60,51 @@ struct struct_dsmr_decoder_t {
 	int startline;
 	dsmr_state_t state;
 	char buffer[256][4096];
+	char crcbuffer[256];
 	dsmr_t pkt;
 	int (*callback)(dsmr_t);
 	regex_t preg;
+	unsigned short crc;
 };
 
 static struct struct_dsmr_decoder_t dsmr_decoder;
+
+
+static unsigned short crc16_table[256] = {
+    0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
+    0xC601, 0x06C0, 0x0780, 0xC741, 0x0500, 0xC5C1, 0xC481, 0x0440,
+    0xCC01, 0x0CC0, 0x0D80, 0xCD41, 0x0F00, 0xCFC1, 0xCE81, 0x0E40,
+    0x0A00, 0xCAC1, 0xCB81, 0x0B40, 0xC901, 0x09C0, 0x0880, 0xC841,
+    0xD801, 0x18C0, 0x1980, 0xD941, 0x1B00, 0xDBC1, 0xDA81, 0x1A40,
+    0x1E00, 0xDEC1, 0xDF81, 0x1F40, 0xDD01, 0x1DC0, 0x1C80, 0xDC41,
+    0x1400, 0xD4C1, 0xD581, 0x1540, 0xD701, 0x17C0, 0x1680, 0xD641,
+    0xD201, 0x12C0, 0x1380, 0xD341, 0x1100, 0xD1C1, 0xD081, 0x1040,
+    0xF001, 0x30C0, 0x3180, 0xF141, 0x3300, 0xF3C1, 0xF281, 0x3240,
+    0x3600, 0xF6C1, 0xF781, 0x3740, 0xF501, 0x35C0, 0x3480, 0xF441,
+    0x3C00, 0xFCC1, 0xFD81, 0x3D40, 0xFF01, 0x3FC0, 0x3E80, 0xFE41,
+    0xFA01, 0x3AC0, 0x3B80, 0xFB41, 0x3900, 0xF9C1, 0xF881, 0x3840,
+    0x2800, 0xE8C1, 0xE981, 0x2940, 0xEB01, 0x2BC0, 0x2A80, 0xEA41,
+    0xEE01, 0x2EC0, 0x2F80, 0xEF41, 0x2D00, 0xEDC1, 0xEC81, 0x2C40,
+    0xE401, 0x24C0, 0x2580, 0xE541, 0x2700, 0xE7C1, 0xE681, 0x2640,
+    0x2200, 0xE2C1, 0xE381, 0x2340, 0xE101, 0x21C0, 0x2080, 0xE041,
+    0xA001, 0x60C0, 0x6180, 0xA141, 0x6300, 0xA3C1, 0xA281, 0x6240,
+    0x6600, 0xA6C1, 0xA781, 0x6740, 0xA501, 0x65C0, 0x6480, 0xA441,
+    0x6C00, 0xACC1, 0xAD81, 0x6D40, 0xAF01, 0x6FC0, 0x6E80, 0xAE41,
+    0xAA01, 0x6AC0, 0x6B80, 0xAB41, 0x6900, 0xA9C1, 0xA881, 0x6840,
+    0x7800, 0xB8C1, 0xB981, 0x7940, 0xBB01, 0x7BC0, 0x7A80, 0xBA41,
+    0xBE01, 0x7EC0, 0x7F80, 0xBF41, 0x7D00, 0xBDC1, 0xBC81, 0x7C40,
+    0xB401, 0x74C0, 0x7580, 0xB541, 0x7700, 0xB7C1, 0xB681, 0x7640,
+    0x7200, 0xB2C1, 0xB381, 0x7340, 0xB101, 0x71C0, 0x7080, 0xB041,
+    0x5000, 0x90C1, 0x9181, 0x5140, 0x9301, 0x53C0, 0x5280, 0x9241,
+    0x9601, 0x56C0, 0x5780, 0x9741, 0x5500, 0x95C1, 0x9481, 0x5440,
+    0x9C01, 0x5CC0, 0x5D80, 0x9D41, 0x5F00, 0x9FC1, 0x9E81, 0x5E40,
+    0x5A00, 0x9AC1, 0x9B81, 0x5B40, 0x9901, 0x59C0, 0x5880, 0x9841,
+    0x8801, 0x48C0, 0x4980, 0x8941, 0x4B00, 0x8BC1, 0x8A81, 0x4A40,
+    0x4E00, 0x8EC1, 0x8F81, 0x4F40, 0x8D01, 0x4DC0, 0x4C80, 0x8C41,
+    0x4400, 0x84C1, 0x8581, 0x4540, 0x8701, 0x47C0, 0x4680, 0x8641,
+    0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040
+};
+
 
 
 static const char hextable[] = {
@@ -116,7 +159,8 @@ struct obis_map_t {
 	{ "1-0:32.36.0", OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L1 },
 	{ "1-0:52.36.0", OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L2 },
 	{ "1-0:72.36.0", OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L3 },
-	{ "0-0:96.13.0", OBIS_ELECTR_TEXT_MESSAGE },
+	{ "0-0:96.13.0", OBIS_ELECTR_TEXT_MESSAGE0 },
+	{ "0-0:96.13.1", OBIS_ELECTR_TEXT_MESSAGE1 }, // Not in standard!!
 	{ "1-0:32.7.0",  OBIS_ELECTR_INST_VOLTAGE_L1 },
 	{ "1-0:52.7.0",  OBIS_ELECTR_INST_VOLTAGE_L2 },
 	{ "1-0:72.7.0",  OBIS_ELECTR_INST_VOLTAGE_L3 },
@@ -143,12 +187,25 @@ struct obis_map_t {
 	{ "0-4:24.2.1",  OBIS_DEVICE4_LAST_5MIN_VALUE },
 };
 
+static unsigned short crc16(unsigned short crc, unsigned char buf) {
+	return (crc >> 8) ^ crc16_table[(crc & 0xff) ^ buf];
+}
+
 int obis_dec(double* out, char* in, char* unit);
 int obis_decint(int* out, char* in);
 int obis_hexdec(char* out, char* in);
 
 static int dsmr_process() {
 	int i;
+	int crc;
+
+	sscanf(dsmr_decoder.crcbuffer, "%04x", &crc);
+	if (dsmr_decoder.crc != crc) {
+		error("ACTION_BUFFER_CRC mismatch (calc:%04x != msg:%04x)", dsmr_decoder.crc, crc);
+	//} else {
+		//error("ACTION_BUFFER_CRC match (calc:%04x != msg:%04x)", dsmr_decoder.crc, crc);
+	}
+
 	for (i = 1; i < dsmr_decoder.row; i++) {
 		regmatch_t pmatch[15];
 		int rval;
@@ -176,6 +233,13 @@ static int dsmr_process() {
 				switch (obis_map[j].key) {
 					case OBIS_VERSION:
 						rval = obis_hexdec(dsmr_decoder.pkt->version, obis_value);
+						break;
+					case OBIS_DATETIME_STAMP:
+						{
+							struct tm lt;
+							strptime(obis_value, "(%y%m%d%H%M%SW)", &lt);
+							dsmr_decoder.pkt->datetime_stamp = mktime(&lt);
+						}
 						break;
 					case OBIS_EQUIPMENT_IDENTIFIER:
 						rval = obis_hexdec(dsmr_decoder.pkt->equipment_identifier, obis_value);
@@ -271,9 +335,10 @@ static int dsmr_process() {
 						rval = obis_decint(&dsmr_decoder.pkt->device4_type, obis_value);
 						break;
 					case OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR:
-						rval = obis_hexdec(dsmr_decoder.pkt->electr_tariff_indicator, obis_value);
+						//rval = obis_hexdec(dsmr_decoder.pkt->electr_tariff_indicator, obis_value);
+						rval = obis_decint(&dsmr_decoder.pkt->electr_tariff_indicator, obis_value);
 						break;
-					case OBIS_ELECTR_TEXT_MESSAGE:
+					case OBIS_ELECTR_TEXT_MESSAGE0:
 						rval = obis_hexdec(dsmr_decoder.pkt->electr_text_message, obis_value);
 						break;
 					case OBIS_DEVICE1_EQUIPMENT_IDENTIFIER:
@@ -293,7 +358,7 @@ static int dsmr_process() {
 					case OBIS_DEVICE2_LAST_5MIN_VALUE:
 					case OBIS_DEVICE3_LAST_5MIN_VALUE:
 					case OBIS_DEVICE4_LAST_5MIN_VALUE:
-					case OBIS_DATETIME_STAMP:
+					case OBIS_ELECTR_TEXT_MESSAGE1: // Not in standard!!
 						// Silently drop...
 						break;
 					default:
@@ -322,7 +387,7 @@ int obis_dec(double* out, char* in, char* unit) {
 	regcomp(&prg, "^\\(([0-9.]*)\\*([^)]*)\\)$", REG_EXTENDED);
 	rval = regexec(&prg, in, sizeof(pmtch)/sizeof(pmtch[0]), pmtch, 0);
 	if (rval != 0) {
-		error("Ill var");
+		error("Ill var: '%s'", in);
 	} else {
 		subnstr(arg2, in, pmtch[2].rm_so, pmtch[2].rm_eo, sizeof(arg2));
 		if (strcmp(arg2, unit) != 0) {
@@ -394,62 +459,122 @@ int dsmr_decode(char* buf, ssize_t len) {
 	int i = 0;
 	dsmr_action_t action;
 	for (i = i; i < len; i++) {
-		action = COPY;
-		switch (buf[i]) {
-			case '/':
-				if (dsmr_decoder.startline) {
-					dsmr_decoder.state = START;
-				}
-				break;
-			case '\n':
-				switch (dsmr_decoder.state) {
-					case UNSET:
-					case START:
-						dsmr_decoder.state = SEP;
-						action = TERMINATE;
-						break;
-					case SEP:
-						dsmr_decoder.state = DATA;
-						action = DROP;
-						break;
-					case DATA:
-						action = TERMINATE;
-						break;
-					case EOR:
-						dsmr_decoder.state = TRAIL;
-						action = END_OF_REC;
-						break;
-					default:
-						printf("\nUnexpected CR in state %d\n", dsmr_decoder.state);
-						action = DROP;
-				}
-				break;
-			case '\r':
-				action = DROP;
-				break;
-			case '!':
-				switch (dsmr_decoder.state) {
-					case DATA:
+		action = ACTION_UNDEF;
+		switch (dsmr_decoder.state) {
+			case STATE_UNDEF:
+				switch (buf[i]) {
+					case '/':
 						if (dsmr_decoder.startline) {
-							dsmr_decoder.state = EOR;
+							dsmr_decoder.crc = crc16(dsmr_decoder.crc, buf[i]);
+							//printf("<STATE_START>\n");
+							dsmr_decoder.state = STATE_START;
 						}
 						break;
 					default:
-						printf("\nUnexpected '!'\n");
-				}
-				break;
-			default:
-				switch (dsmr_decoder.state) {
-					case START:
-					case DATA:
+						// Silently drop everything is state STATE_UNDEF
 						break;
-					case UNSET:
-					case EOR:
-						action = DROP;
+				}
+				action = ACTION_NONE;
+				break;
+			case STATE_START:
+				dsmr_decoder.crc = crc16(dsmr_decoder.crc, buf[i]);
+				switch (buf[i]) {
+					case '\n':
+						//printf("<STATE_SEPARATOR>\n");
+						dsmr_decoder.state = STATE_SEPARATOR;
 						break;
 					default:
-						printf("\nUnexpected character '%c'\n", buf[i]);
+						// Silently drop header
+						break;
 				}
+				action = ACTION_NONE;
+				break;
+			case STATE_SEPARATOR:
+				dsmr_decoder.crc = crc16(dsmr_decoder.crc, buf[i]);
+				switch (buf[i]) {
+					case '\n':
+						//printf("<STATE_DATA>\n");
+						dsmr_decoder.state = STATE_DATA;
+						break;
+					case '\r':
+						break;
+					default:
+						error("Ill char in state STATE_SEPARATOR");
+						break;
+				}
+				action = ACTION_NONE;
+				break;
+			case STATE_DATA:
+				dsmr_decoder.crc = crc16(dsmr_decoder.crc, buf[i]);
+				switch (buf[i]) {
+					case '!':
+						if (dsmr_decoder.startline) {
+							//printf("<STATE_END_TRANS>\n");
+							dsmr_decoder.state = STATE_END_TRANS;
+							action = ACTION_NONE;
+						} else {
+							action = ACTION_BUFFER_FIELD;
+						}
+						break;
+					case '\n':
+						action = ACTION_TERMINATE_FIELD;
+						break;
+					case '\r':
+						action = ACTION_NONE;
+						break;
+					default:
+						action = ACTION_BUFFER_FIELD;
+						break;
+				}
+				break;
+			case STATE_END_TRANS:
+				switch (buf[i]) {
+					case '\n':
+						//printf("<STATE_TRAILER>\n");
+						dsmr_decoder.state = STATE_TRAILER;
+						action = ACTION_PROCESS_RECORD;
+						break;
+					case '\r':
+						action = ACTION_NONE;
+						break;
+					default:
+						//printf("<STATE_END_TRANS_CRC>\n");
+						dsmr_decoder.state = STATE_END_TRANS_CRC;
+						action = ACTION_BUFFER_CRC;
+						break;
+				}
+				break;
+			case STATE_END_TRANS_CRC:
+				switch (buf[i]) {
+					case '\n':
+						//printf("<STATE_TRAILER>\n");
+						dsmr_decoder.state = STATE_TRAILER;
+						action = ACTION_PROCESS_RECORD;
+						break;
+					case '\r':
+						action = ACTION_NONE;
+						break;
+					default:
+						action = ACTION_BUFFER_CRC;
+						break;
+				}
+				break;
+			case STATE_TRAILER:
+				switch (buf[i]) {
+					case '/':
+						if (dsmr_decoder.startline) {
+							dsmr_decoder.crc = crc16(dsmr_decoder.crc, buf[i]);
+							//printf("<STATE_START>\n");
+							dsmr_decoder.state = STATE_START;
+						}
+						break;
+					default:
+						error("Ill char in state STATE_TRAILER");
+						break;
+				}
+				action = ACTION_NONE;
+				break;
+			default:
 				break;
 		}
 		if ((buf[i] == '\r') || (buf[i] == '\n')) {
@@ -458,23 +583,31 @@ int dsmr_decode(char* buf, ssize_t len) {
 			dsmr_decoder.startline = 0;
 		}
 		switch (action) {
-			case COPY:
+			case ACTION_BUFFER_FIELD:
 				dsmr_decoder.buffer[dsmr_decoder.row][dsmr_decoder.location] = buf[i];
 				dsmr_decoder.location++;
 				break;
-			case TERMINATE:
+			case ACTION_TERMINATE_FIELD:
 				dsmr_decoder.buffer[dsmr_decoder.row][dsmr_decoder.location] = '\0';
 				dsmr_decoder.row++;
 				dsmr_decoder.location = 0;
 				break;
-			case END_OF_REC:
-				dsmr_decoder.buffer[dsmr_decoder.row][dsmr_decoder.location] = '\0';
+			case ACTION_PROCESS_RECORD:
+				dsmr_decoder.crcbuffer[dsmr_decoder.location] = '\0';
 				dsmr_process();
-dsmr_print(dsmr_decoder.pkt);
+				//dsmr_print(dsmr_decoder.pkt);
 				dsmr_decoder.location = 0;
 				dsmr_decoder.row = 0;
+				dsmr_decoder.crc = 0;
 				break;
-			case DROP:
+			case ACTION_BUFFER_CRC:
+				dsmr_decoder.crcbuffer[dsmr_decoder.location] = buf[i];
+				dsmr_decoder.location++;
+				break;
+			case ACTION_NONE:
+				break;
+			case ACTION_UNDEF:
+				error("Illegal action");
 				break;
 		}
 	}
@@ -482,20 +615,32 @@ dsmr_print(dsmr_decoder.pkt);
 }
 
 int dsmr_print(dsmr_t dsmr) {
+	printf("-----------------------------\n");
 	printf("%32s: 0x%09lx\n", "bitmask", dsmr->obis);
 	printf("%32s: '%s'\n", "version", dsmr->version);
-	//time_t datetime_stamp;
+{
+	char buf[256];
+	struct tm* lt = localtime(&dsmr->datetime_stamp);
+	strftime(buf, sizeof(buf), "%c", lt);
+	printf("%32s: %s\n", "datetime_stamp", buf);
+}
 	printf("%32s: '%s'\n", "equipment_identifier", dsmr->equipment_identifier);
-	printf("%32s: %09.3f [kWh]\n", "electr_to_client_tariff1", dsmr->electr_to_client_tariff1);
-	printf("%32s: %09.3f [kWh]\n", "electr_to_client_tariff2", dsmr->electr_to_client_tariff2);
-	printf("%32s: %09.3f [kWh]\n", "electr_by_client_tariff1", dsmr->electr_by_client_tariff1);
-	printf("%32s: %09.3f [kWh]\n", "electr_by_client_tariff2", dsmr->electr_by_client_tariff2);
-	printf("%32s: '%s'\n", "electr_tariff_indicator", dsmr->electr_tariff_indicator);
-	printf("%32s: %05.3f [kW]\n", "electr_power_delivered", dsmr->electr_power_delivered);
-	printf("%32s: %05.3f [kW]\n", "electr_power_received", dsmr->electr_power_received);
+	printf("%32s: %010.3f [kWh]\n", "electr_to_client_tariff1", dsmr->electr_to_client_tariff1);
+	printf("%32s: %010.3f [kWh]\n", "electr_to_client_tariff2", dsmr->electr_to_client_tariff2);
+	printf("%32s: %010.3f [kWh]\n", "electr_by_client_tariff1", dsmr->electr_by_client_tariff1);
+	printf("%32s: %010.3f [kWh]\n", "electr_by_client_tariff2", dsmr->electr_by_client_tariff2);
+	//printf("%32s: '%s'\n", "electr_tariff_indicator", dsmr->electr_tariff_indicator);
+	printf("%32s: %d\n", "electr_tariff_indicator", dsmr->electr_tariff_indicator);
+	printf("%32s: %06.3f [kW]\n", "electr_power_delivered", dsmr->electr_power_delivered);
+	printf("%32s: %06.3f [kW]\n", "electr_power_received", dsmr->electr_power_received);
 	printf("%32s: %d\n", "electr_nof_power_failures", dsmr->electr_nof_power_failures);
 	printf("%32s: %d\n", "electr_nof_long_power_failures", dsmr->electr_nof_long_power_failures);
-	//time_t electr_power_failure_event_log;
+{
+	char buf[256];
+	struct tm* lt = localtime(&dsmr->electr_power_failure_event_log);
+	strftime(buf, sizeof(buf), "%c", lt);
+	printf("%32s: %s\n", "electr_power_failure_event_log", buf);
+}
 	printf("%32s: %d\n", "electr_nof_voltage_sage_l1", dsmr->electr_nof_voltage_sage_l1);
 	printf("%32s: %d\n", "electr_nof_voltage_sage_l2", dsmr->electr_nof_voltage_sage_l2);
 	printf("%32s: %d\n", "electr_nof_voltage_sage_l3", dsmr->electr_nof_voltage_sage_l3);
@@ -503,18 +648,18 @@ int dsmr_print(dsmr_t dsmr) {
 	printf("%32s: %d\n", "electr_nof_voltage_swells_l2", dsmr->electr_nof_voltage_swells_l2);
 	printf("%32s: %d\n", "electr_nof_voltage_swells_l3", dsmr->electr_nof_voltage_swells_l3);
 	printf("%32s: '%s'\n", "electr_text_message", dsmr->electr_text_message);
-	printf("%32s: %04.1f [V]\n", "electr_inst_voltage_l1", dsmr->electr_inst_voltage_l1);
-	printf("%32s: %04.1f [V]\n", "electr_inst_voltage_l2", dsmr->electr_inst_voltage_l2);
-	printf("%32s: %04.1f [V]\n", "electr_inst_voltage_l3", dsmr->electr_inst_voltage_l3);
+	printf("%32s: %05.1f [V]\n", "electr_inst_voltage_l1", dsmr->electr_inst_voltage_l1);
+	printf("%32s: %05.1f [V]\n", "electr_inst_voltage_l2", dsmr->electr_inst_voltage_l2);
+	printf("%32s: %05.1f [V]\n", "electr_inst_voltage_l3", dsmr->electr_inst_voltage_l3);
 	printf("%32s: %03.0f [A]\n", "electr_inst_current_l1", dsmr->electr_inst_current_l1);
 	printf("%32s: %03.0f [A]\n", "electr_inst_current_l2", dsmr->electr_inst_current_l2);
 	printf("%32s: %03.0f [A]\n", "electr_inst_current_l3", dsmr->electr_inst_current_l3);
-	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_delv_l1", dsmr->electr_inst_active_power_delv_l1);
-	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_delv_l2", dsmr->electr_inst_active_power_delv_l2);
-	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_delv_l3", dsmr->electr_inst_active_power_delv_l3);
-	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_recv_l1", dsmr->electr_inst_active_power_recv_l1);
-	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_recv_l2", dsmr->electr_inst_active_power_recv_l2);
-	printf("%32s: %05.3f [kW]\n", "electr_inst_active_power_recv_l3", dsmr->electr_inst_active_power_recv_l3);
+	printf("%32s: %06.3f [kW]\n", "electr_inst_active_power_delv_l1", dsmr->electr_inst_active_power_delv_l1);
+	printf("%32s: %06.3f [kW]\n", "electr_inst_active_power_delv_l2", dsmr->electr_inst_active_power_delv_l2);
+	printf("%32s: %06.3f [kW]\n", "electr_inst_active_power_delv_l3", dsmr->electr_inst_active_power_delv_l3);
+	printf("%32s: %06.3f [kW]\n", "electr_inst_active_power_recv_l1", dsmr->electr_inst_active_power_recv_l1);
+	printf("%32s: %06.3f [kW]\n", "electr_inst_active_power_recv_l2", dsmr->electr_inst_active_power_recv_l2);
+	printf("%32s: %06.3f [kW]\n", "electr_inst_active_power_recv_l3", dsmr->electr_inst_active_power_recv_l3);
 	printf("%32s: %d\n", "device1_type", dsmr->device1_type);
 	printf("%32s: '%s'\n", "device1_equipment_identifier", dsmr->device1_equipment_identifier);
 	printf("%32s: %f\n", "device1_last_5min_value", dsmr->device1_last_5min_value);

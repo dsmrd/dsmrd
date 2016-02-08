@@ -30,36 +30,32 @@ int daemonize() {
 	int rval;
 
 	pid = fork();
-
-	if (pid < 0)
-	{
+	if (pid < 0) {
 		printf("fork failed!\n");
-		exit(1);
+		exit(EXIT_FAILURE);
+	} else {
+		if (pid > 0) {
+			printf("pid of child process %d \n", pid);
+			exit(EXIT_SUCCESS);
+		} else {
+			(void) umask(0);
+
+			sid = setsid();
+			if(sid < 0) {
+				exit(EXIT_FAILURE);
+			} else {
+				rval = chdir("/");
+				if (rval != 0) {
+					exit(EXIT_FAILURE);
+				} else {
+					(void) close(STDIN_FILENO);
+					(void) close(STDOUT_FILENO);
+					(void) close(STDERR_FILENO);
+				}
+			}
+		}
 	}
 
-	if (pid > 0)
-	{
-		printf("pid of child process %d \n", pid);
-		exit(0);
-	}
-
-	umask(0);
-
-	sid = setsid();
-	if(sid < 0)
-	{
-		exit(1);
-	}
-
-	rval = chdir("/");
-if (rval) {
-exit(1);
-}
-
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
-
-	return (0);
+	return 0;
 }
 

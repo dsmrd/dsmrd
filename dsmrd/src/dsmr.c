@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#define _XOPEN_SOURCE
+#define __USE_XOPEN
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -26,15 +28,8 @@
 #include "dsmr.h"
 #include "logging.h"
 #include "options.h"
+#include "util.h"
 
-
-static char* subnstr(char* dest, const char* string, int so, int eo, size_t n) {
-    int len = eo - so;
-    int min = (len < (n-1)) ? len : (n-1);
-    strncpy(dest, string+so, min);
-    dest[min] = '\0';
-    return dest;
-}
 
 typedef enum {
 	STATE_UNDEF = 0,
@@ -195,6 +190,7 @@ static unsigned short crc16(unsigned short crc, unsigned char buf) {
 int obis_dec(double* out, char* in, char* unit);
 int obis_decint(int* out, char* in);
 int obis_hexdec(char* out, char* in);
+int obis_5mindec(time_t* out1, double*, char* in, char* unit);
 
 static int dsmr_process() {
 	int i;
@@ -217,8 +213,8 @@ static int dsmr_process() {
 				char obis_value[256];
 				int j;
 
-				subnstr(obis_reference, dsmr_decoder.buffer[i], pmatch[1].rm_so, pmatch[1].rm_eo, sizeof(obis_reference));
-				subnstr(obis_value, dsmr_decoder.buffer[i], pmatch[3].rm_so, pmatch[3].rm_eo, sizeof(obis_value));
+				regsubstr(obis_reference, sizeof(obis_reference), dsmr_decoder.buffer[i], pmatch, 1);
+				regsubstr(obis_value, sizeof(obis_value), dsmr_decoder.buffer[i], pmatch, 3);
 				for (j=0; j<(sizeof(obis_map)/sizeof(struct obis_map_t)); j++) {
 					if (!strcmp(obis_map[j].reference, obis_reference)) {
 						break;
@@ -351,11 +347,39 @@ static int dsmr_process() {
 						case OBIS_DEVICE4_EQUIPMENT_IDENTIFIER:
 							rval = obis_hexdec(dsmr_decoder.pkt->device4_equipment_identifier, obis_value);
 							break;
-						case OBIS_ELECTR_POWER_FAILURE_EVENT_LOG:
 						case OBIS_DEVICE1_LAST_5MIN_VALUE:
+							if (dsmr_decoder.pkt->device1_type == 3) {
+								rval = obis_5mindec(&dsmr_decoder.pkt->device1_capture_time,
+										&dsmr_decoder.pkt->device1_last_5min_value, obis_value, "m3");
+							} else {
+								rval = -1;
+							}
+							break;
 						case OBIS_DEVICE2_LAST_5MIN_VALUE:
+							if (dsmr_decoder.pkt->device2_type == 3) {
+								rval = obis_5mindec(&dsmr_decoder.pkt->device2_capture_time,
+										&dsmr_decoder.pkt->device2_last_5min_value, obis_value, "m3");
+							} else {
+								rval = -1;
+							}
+							break;
 						case OBIS_DEVICE3_LAST_5MIN_VALUE:
+							if (dsmr_decoder.pkt->device3_type == 3) {
+								rval = obis_5mindec(&dsmr_decoder.pkt->device3_capture_time,
+										&dsmr_decoder.pkt->device3_last_5min_value, obis_value, "m3");
+							} else {
+								rval = -1;
+							}
+							break;
 						case OBIS_DEVICE4_LAST_5MIN_VALUE:
+							if (dsmr_decoder.pkt->device4_type == 3) {
+								rval = obis_5mindec(&dsmr_decoder.pkt->device4_capture_time,
+										&dsmr_decoder.pkt->device4_last_5min_value, obis_value, "m3");
+							} else {
+								rval = -1;
+							}
+							break;
+						case OBIS_ELECTR_POWER_FAILURE_EVENT_LOG:
 						case OBIS_ELECTR_TEXT_MESSAGE1: // Not in standard!!
 							// Silently drop...
 							break;
@@ -389,11 +413,11 @@ int obis_dec(double* out, char* in, char* unit) {
 	if (rval != 0) {
 		error("Ill var: '%s'", in);
 	} else {
-		subnstr(arg2, in, pmtch[2].rm_so, pmtch[2].rm_eo, sizeof(arg2));
+		regsubstr(arg2, sizeof(arg2), in, pmtch, 2);
 		if (strcmp(arg2, unit) != 0) {
 			error("Ill unit");
 		} else {
-			subnstr(arg1, in, pmtch[1].rm_so, pmtch[1].rm_eo, sizeof(arg1));
+			regsubstr(arg1, sizeof(arg1), in, pmtch, 1);
 			sscanf(arg1, "%lf", out);
 		}
 	}
@@ -413,7 +437,7 @@ int obis_decint(int* out, char* in) {
 	if (rval != 0) {
 		error("Ill var");
 	} else {
-		subnstr(arg1, in, pmtch[1].rm_so, pmtch[1].rm_eo, sizeof(arg1));
+		regsubstr(arg1, sizeof(arg1), in, pmtch, 1);
 		sscanf(arg1, "%d", out);
 	}
 	regfree(&prg);
@@ -432,13 +456,39 @@ int obis_hexdec(char* out, char* in) {
 	if (rval != 0) {
 		error("Ill var");
 	} else {
-		subnstr(arg1, in, pmtch[1].rm_so, pmtch[1].rm_eo, sizeof(arg1));
+		regsubstr(arg1, sizeof(arg1), in, pmtch, 1);
 		hexdec(out, arg1);
 		out[strlen(arg1)/2] = '\0';
 	}
 	regfree(&prg);
 
 	return rval;
+}
+
+int obis_5mindec(time_t* out1, double* out2, char* in, char* unit) {
+    char arg1[256];
+    char arg2[256];
+    char arg3[256];
+    regex_t prg;
+    regmatch_t pmtch[4];
+    int rval;
+
+    regcomp(&prg, "^\\(([0-9]*)([A-Z]?)\\)\\(([^)]*)\\*([^)]*)\\)$", REG_EXTENDED);
+    rval = regexec(&prg, in, sizeof(pmtch)/sizeof(pmtch[0]), pmtch, 0);
+    if (rval != 0) {
+        error("Ill var");
+    } else {
+		struct tm lt;
+		regsubstr(arg1, sizeof(arg1), in, pmtch, 1);
+		regsubstr(arg2, sizeof(arg2), in, pmtch, 2);
+		regsubstr(arg3, sizeof(arg3), in, pmtch, 3);
+		strptime(arg1, "%y%m%d%H%M%S", &lt);
+		*out1 = mktime(&lt);
+		sscanf(arg1, "%lf", out2);
+	}
+    regfree(&prg);
+
+    return rval;
 }
 
 int dsmr_init(int (callback)(dsmr_t), dsmr_t pkt) {

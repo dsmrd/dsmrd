@@ -108,16 +108,20 @@ struct struct_dsmr_t {
 	double electr_inst_active_power_recv_l3;
 	int    device1_type;
 	char   device1_equipment_identifier[(OBIS_EQUIP_ID_LENTH/2)+1]; // Sn (n=0..96)
+	time_t device1_capture_time;
 	double device1_last_5min_value;
 	int    device2_type;
 	char   device2_equipment_identifier[(OBIS_EQUIP_ID_LENTH/2)+1]; // Sn (n=0..96)
 	double device2_last_5min_value;
+	time_t device2_capture_time;
 	int    device3_type;
 	char   device3_equipment_identifier[(OBIS_EQUIP_ID_LENTH/2)+1]; // Sn (n=0..96)
 	double device3_last_5min_value;
+	time_t device3_capture_time;
 	int    device4_type;
 	char   device4_equipment_identifier[(OBIS_EQUIP_ID_LENTH/2)+1]; // Sn (n=0..96)
 	double device4_last_5min_value;
+	time_t device4_capture_time;
 };
 
 typedef struct struct_dsmr_t* dsmr_t;

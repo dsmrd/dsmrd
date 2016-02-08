@@ -19,11 +19,11 @@
 
 #include "util.h"
 
-char* regsubstr(char* dest, size_t n, const char* string, regmatch_t pmatch[], int idx) {
-    int eo = pmatch[idx].rm_eo;
-    int so = pmatch[idx].rm_so;
-    int len = eo - so;
-    int min = (len < (n-1)) ? len : (n-1);
+/*@null@*/ char* regsubstr(char* dest, size_t n, const char* string, regmatch_t pmatch[], int idx) {
+    regoff_t eo = pmatch[idx].rm_eo;
+    regoff_t so = pmatch[idx].rm_so;
+    size_t len = (size_t)(eo - so);
+    size_t min = (len < (n-1)) ? len : (n-1);
     if (so == -1) { return NULL; }
     strncpy(dest, string+so, min);
     dest[min] = '\0';

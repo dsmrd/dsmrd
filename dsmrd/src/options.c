@@ -35,7 +35,7 @@ static int run_from_src(char* argv[], /*@out@*/ char** dir) {
 	strncpy(arg0, argv[0], sizeof(arg0));
 	*dir = dirname(arg0);
 	(void) snprintf(s, sizeof(s), "%s/%s", *dir, __FILE__);
-	rval = (access(s, F_OK) != -1) ? 0 : 1;
+	rval = (access(s, F_OK) != -1) ? 1 : 0;
 
 	return rval;
 }

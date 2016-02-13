@@ -43,7 +43,7 @@ struct struct_serial_t {
 	dispatch_t dis;
 };
 
-struct baudmap_t {
+static struct baudmap_t {
 	int baud;
 	int bits;
 } baudmap[] = {
@@ -68,6 +68,9 @@ struct baudmap_t {
 };
 
 
+static int serial_read(void* inst);
+static int serial_close(void* inst);
+
 
 serial_t serial_init(char* device, serial_baud_t baud, int is_tty, int (decoder)(char*, ssize_t)) {
 	serial_t inst;
@@ -78,7 +81,7 @@ serial_t serial_init(char* device, serial_baud_t baud, int is_tty, int (decoder)
 
 	inst = calloc(sizeof(struct struct_serial_t), 1);
 	if (inst != NULL) {
-		for (i=0; i<(sizeof(baudmap)/sizeof(struct baudmap_t)); i++) {
+		for (i=0; i<(int)(sizeof(baudmap)/sizeof(struct baudmap_t)); i++) {
 			if (baudmap[i].baud == baud) {
 				b = baudmap[i].bits;
 				break;
@@ -87,14 +90,15 @@ serial_t serial_init(char* device, serial_baud_t baud, int is_tty, int (decoder)
 		if (b == -1) {
 			error("Cannot handle baudrate setting");
 			free(inst);
+			inst = NULL;
 		} else {
 			strncpy(inst->device, device, sizeof(inst->device));
-			inst->newtio.c_cflag = b | CS8 | CLOCAL | CREAD;
-			inst->newtio.c_iflag = IGNPAR | IGNBRK | IXANY;
+			inst->newtio.c_cflag = (tcflag_t)(b | CS8 | CLOCAL | CREAD);
+			inst->newtio.c_iflag = (tcflag_t)(IGNPAR | IGNBRK | IXANY);
 			inst->newtio.c_oflag = 0;
 			inst->newtio.c_lflag = 0;
-			inst->newtio.c_cc[VTIME] = 10;
-			inst->newtio.c_cc[VMIN] = 1;
+			inst->newtio.c_cc[VTIME] = (cc_t)10;
+			inst->newtio.c_cc[VMIN] = (cc_t)1;
 			inst->decoder = decoder;
 			inst->is_tty = is_tty;
 		}
@@ -112,7 +116,7 @@ int serial_open(serial_t inst, dispatch_t dis) {
 		error("Cannot open serial line: %s", strerror(errno));
 		rval = -1;
 	} else {
-		if (inst->is_tty) {
+		if (inst->is_tty != 0) {
 			rval = tcgetattr(inst->fd, &(inst->oldtio));
 			if (rval != 0) {
 				if (errno == ENOTTY) {
@@ -146,19 +150,20 @@ int serial_open(serial_t inst, dispatch_t dis) {
 	return rval;
 }
 
-int serial_read(void* data) {
+static int serial_read(void* data) {
 	serial_t inst = (serial_t) data;
 	char buf[255];
 	int rval;
+	ssize_t sz;
 
-	rval = read(inst->fd, buf, sizeof(buf)-1);
-	if (rval < 0) {
+	sz = read(inst->fd, buf, sizeof(buf)-1);
+	if (sz < 0) {
 		error("Cannot read from serial line: %s", strerror(errno));
 		rval = -1;
 	} else {
-		if (rval > 0) {
-			buf[rval]=0;
-			rval = inst->decoder(buf, rval);
+		if (sz > 0) {
+			buf[sz]='\0';
+			rval = inst->decoder(buf, sz);
 		} else {
 			error("Cannot read from serial line: no data available");
 			rval = -1;
@@ -168,22 +173,23 @@ int serial_read(void* data) {
 	return rval;
 }
 
-int serial_close(void* data) {
+static int serial_close(void* data) {
 	serial_t inst = (serial_t) data;
 	int rval;
 
 	(void) dispatch_unregister(inst->dis, inst);
 
-	if (inst->is_tty) {
+	if (inst->is_tty != 0) {
 		rval = tcsetattr(inst->fd, TCSANOW, &(inst->oldtio));
 		if (rval < 0) {
 			error("Cannot restore serial line settings: %s", strerror(errno));
 		}
 	}
 
-	close(inst->fd);
+	(void) close(inst->fd);
 
 	free(inst);
+	inst = NULL;
 
 	info("Stopped P1 driver");
 

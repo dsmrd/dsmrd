@@ -28,10 +28,8 @@ typedef enum {
 
 typedef struct struct_serial_t* serial_t;
 
-serial_t serial_init(char* device, serial_baud_t baud, int enable_tc, int (decoder)(char*, ssize_t));
+/*@null@*/ serial_t serial_init(char* device, serial_baud_t baud, int enable_tc, int (decoder)(char*, ssize_t));
 int serial_open(serial_t inst, dispatch_t dis);
-int serial_read(void* inst);
-int serial_close(void* inst);
 
 #endif // SERIAL_H
 

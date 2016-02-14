@@ -235,10 +235,10 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len) {
 	return 0;
 }
 
-static int http_response_index(handler_t inst, /*@unused@*/ char* method) {
+static int http_response_index(handler_t inst, /*@unused@*/ char* method, /*@unused@*/ char* uri) {
 	char index[PATH_MAX];
-	char buf[16*2014];
-	char b2[16*2014];
+	char buf[32*2014];
+	char b2[32*2014];
 	int fd;
 	ssize_t rval;
 
@@ -477,6 +477,43 @@ static char* http_response_indicator(handler_t inst, char* method, ...) {
 	return buf;
 }
 
+static char* http_response_equipment(handler_t inst, char* method, ...) {
+	va_list ap;
+	static char buf[256];
+
+	va_start(ap, method);
+
+	(void) snprintf(buf, sizeof(buf), "\"%s\"", inst->dsmr->equipment_identifier);
+
+	va_end(ap);
+
+	return buf;
+}
+
+static char* http_response_gas_equipment(handler_t inst, char* method, ...) {
+	va_list ap;
+	static char buf[256];
+
+	va_start(ap, method);
+
+	(void) snprintf(buf, sizeof(buf), "\"%s\"", inst->dsmr->device1_equipment_identifier);
+
+	va_end(ap);
+
+	return buf;
+}
+
+static char* http_response_gas_delivered(handler_t inst, char* method, ...) {
+	va_list ap;
+	static char buf[256];
+
+	va_start(ap, method);
+	(void) snprintf(buf, sizeof(buf), "%.3f", inst->dsmr->device1_last_5min_value);
+	va_end(ap);
+
+	return buf;
+}
+
 static int rest_inited = 0;
 struct {
 	char* resource;
@@ -496,6 +533,9 @@ struct {
 	{ "/api/electricity/phases/([123])/voltage", {}, { { "GET", http_response_phase_voltage } } },
 	{ "/api/electricity/power/delivered", {}, { { "GET", http_response_total_power_delivered } } },
 	{ "/api/electricity/power/received", {}, { { "GET", http_response_total_power_received } } },
+	{ "/api/electricity/equipment", {}, { { "GET", http_response_equipment } } },
+	{ "/api/gas/equipment", {}, { { "GET", http_response_gas_equipment } } },
+	{ "/api/gas/delivered", {}, { { "GET", http_response_gas_delivered } } },
 };
 
 static int handler_callback(void* data, http_decoder_t decoder) {
@@ -506,7 +546,7 @@ static int handler_callback(void* data, http_decoder_t decoder) {
 	info("Served %s %s", decoder->request_method, decoder->request_uri);
 
 	if (strncmp("/api", decoder->request_uri, 4) != 0) {
-		http_response_index(inst, decoder->request_uri);
+		http_response_index(inst, decoder->request_method, decoder->request_uri);
 	} else {
 		regmatch_t pmatch[5];
 		int i, j=0;

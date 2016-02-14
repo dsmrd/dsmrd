@@ -66,21 +66,21 @@
 #define OBIS_DEVICE4_LAST_5MIN_VALUE			0x0000040000000000UL
 #define OBIS_ELECTR_TEXT_MESSAGE1				0x8000000000000000UL
 
-#define OBIS_VERSION_LENGTH			2
-#define OBIS_TARIFF_IND_LENGTH		4
-#define OBIS_EQUIP_ID_LENTH			96
-#define OBIS_TEXT_MSG_LENGTH		2048
+#define OBIS_VERSION_LENGTH			((2/2)+1)
+#define OBIS_TARIFF_IND_LENGTH		((4/2)+1)
+#define OBIS_EQUIP_ID_LENGTH		((96/2)+1)
+#define OBIS_TEXT_MSG_LENGTH		((2048/2)+1)
 
 struct struct_dsmr_t {
 	unsigned long obis;
-	char   version[(OBIS_VERSION_LENGTH/2)+1]; // S2
+	char   version[OBIS_VERSION_LENGTH];
 	time_t datetime_stamp;
-	char   equipment_identifier[(OBIS_EQUIP_ID_LENTH/2)+1]; // Sn (n=0..96)
+	char   equipment_identifier[OBIS_EQUIP_ID_LENGTH];
 	double electr_to_client_tariff1;
 	double electr_to_client_tariff2;
 	double electr_by_client_tariff1;
 	double electr_by_client_tariff2;
-	//char   electr_tariff_indicator[(OBIS_TARIFF_IND_LENGTH/2)+1]; // S4
+	//char   electr_tariff_indicator[OBIS_TARIFF_IND_LENGTH];
 	int    electr_tariff_indicator;
 	double electr_power_delivered;
 	double electr_power_received;
@@ -93,7 +93,7 @@ struct struct_dsmr_t {
 	int    electr_nof_voltage_swells_l1;
 	int    electr_nof_voltage_swells_l2;
 	int    electr_nof_voltage_swells_l3;
-	char   electr_text_message[(OBIS_TEXT_MSG_LENGTH/2)+1]; // Sn (n=0..2048)
+	char   electr_text_message[OBIS_TEXT_MSG_LENGTH];
 	double electr_inst_voltage_l1;
 	double electr_inst_voltage_l2;
 	double electr_inst_voltage_l3;
@@ -107,19 +107,19 @@ struct struct_dsmr_t {
 	double electr_inst_active_power_recv_l2;
 	double electr_inst_active_power_recv_l3;
 	int    device1_type;
-	char   device1_equipment_identifier[(OBIS_EQUIP_ID_LENTH/2)+1]; // Sn (n=0..96)
+	char   device1_equipment_identifier[OBIS_EQUIP_ID_LENGTH];
 	time_t device1_capture_time;
 	double device1_last_5min_value;
 	int    device2_type;
-	char   device2_equipment_identifier[(OBIS_EQUIP_ID_LENTH/2)+1]; // Sn (n=0..96)
+	char   device2_equipment_identifier[OBIS_EQUIP_ID_LENGTH];
 	double device2_last_5min_value;
 	time_t device2_capture_time;
 	int    device3_type;
-	char   device3_equipment_identifier[(OBIS_EQUIP_ID_LENTH/2)+1]; // Sn (n=0..96)
+	char   device3_equipment_identifier[OBIS_EQUIP_ID_LENGTH];
 	double device3_last_5min_value;
 	time_t device3_capture_time;
 	int    device4_type;
-	char   device4_equipment_identifier[(OBIS_EQUIP_ID_LENTH/2)+1]; // Sn (n=0..96)
+	char   device4_equipment_identifier[OBIS_EQUIP_ID_LENGTH];
 	double device4_last_5min_value;
 	time_t device4_capture_time;
 };

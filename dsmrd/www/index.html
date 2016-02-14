@@ -4,62 +4,78 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
 <script>
 
+function pad(num, size, decim) {
+	var s = "000000" + Number(num).toFixed(decim);
+	return s.substr(s.length - size);
+}
+
 $(document).ready(function(){
 		setInterval(function() {
 		$.getJSON('api/electricity/power/received', function(result){
-			$('#total_recv_power').html(result);
+			$('#total_recv_power').show().html(pad(result, 9, 3));
 			}).fail(function() { $('#total_recv_power').html('N/A'); });
 		$.getJSON('api/electricity/power/delivered', function(result){
-			$('#total_power').html(result);
+			$('#total_power').show().html(pad(result, 9, 3));
 			}).fail(function() { $('#total_power').html('N/A'); });
+
+		$.getJSON('api/electricity/tariffs/indicator', function(result){
+			if (result == 0) {
+				$('tr#m1').addClass('active');
+				$('tr#m2').removeClass('active');
+			} else {
+				$('tr#m1').removeClass('active');
+				$('tr#m2').addClass('active');
+			}
+			});
+
 		$.getJSON('api/electricity/phases/1/power_received', function(result){
-			$('#Pn1').html(result);
+			$('#Pn1').show().html(pad(result, 9, 3));
 			}).fail(function() { $('#Pn1').html('N/A'); });
 		$.getJSON('api/electricity/phases/2/power_received', function(result){
-			$('#Pn2').html(result);
+			$('#Pn2').show().html(pad(result, 9, 3));
 			}).fail(function() { $('#Pn2').html('N/A'); });
 		$.getJSON('api/electricity/phases/3/power_received', function(result){
-			$('#Pn3').html(result);
+			$('#Pn3').html(pad(result, 9, 3));
 			}).fail(function() { $('#Pn3').html('N/A'); });
 		$.getJSON('api/electricity/phases/1/power_delivered', function(result){
-			$('#Pp1').html(result);
+			$('#Pp1').html(pad(result, 9, 3));
 			}).fail(function() { $('#Pp1').html('N/A'); });
 		$.getJSON('api/electricity/phases/2/power_delivered', function(result){
-			$('#Pp2').html(result);
+			$('#Pp2').html(pad(result, 9, 3));
 			}).fail(function() { $('#Pp2').html('N/A'); });
 		$.getJSON('api/electricity/phases/3/power_delivered', function(result){
-			$('#Pp3').html(result);
+			$('#Pp3').html(pad(result, 9, 3));
 			}).fail(function() { $('#Pp3').html('N/A'); });
 		$.getJSON('api/electricity/phases/1/current', function(result){
-			$('#A1').html(result);
+			$('#A1').html(pad(result, 3, 0));
 			}).fail(function() { $('#A1').html('N/A'); });
 		$.getJSON('api/electricity/phases/2/current', function(result){
-			$('#A2').html(result);
+			$('#A2').html(pad(result, 3, 0));
 			}).fail(function() { $('#A2').html('N/A'); });
 		$.getJSON('api/electricity/phases/3/current', function(result){
-			$('#A3').html(result);
+			$('#A3').html(pad(result, 3, 0));
 			}).fail(function() { $('#A3').html('N/A'); });
 		$.getJSON('api/electricity/phases/1/voltage', function(result){
-			$('#V1').html(result);
+			$('#V1').html(pad(result, 5, 1));
 			}).fail(function() { $('#V1').html('N/A'); });
 		$.getJSON('api/electricity/phases/2/voltage', function(result){
-			$('#V2').html(result);
+			$('#V2').html(pad(result, 5, 1));
 			}).fail(function() { $('#V2').html('N/A'); });
 		$.getJSON('api/electricity/phases/3/voltage', function(result){
-			$('#V3').html(result);
+			$('#V3').html(pad(result, 5, 1));
 			}).fail(function() { $('#V3').html('N/A'); });
 
 		$.getJSON('api/electricity/tariffs/1/delivered', function(result){
-			$('#delv1').html(result);
+			$('#delv1').html(pad(result, 10, 3));
 			}).fail(function() { $('#delv1').html('N/A'); });
 		$.getJSON('api/electricity/tariffs/2/delivered', function(result){
-			$('#delv2').html(result);
+			$('#delv2').html(pad(result, 10, 3));
 			}).fail(function() { $('#delv2').html('N/A'); });
 		$.getJSON('api/electricity/tariffs/1/received', function(result){
-			$('#recv1').html(result);
+			$('#recv1').html(pad(result, 10, 3));
 			}).fail(function() { $('#recv1').html('N/A'); });
 		$.getJSON('api/electricity/tariffs/2/received', function(result){
-			$('#recv2').html(result);
+			$('#recv2').html(pad(result, 10, 3));
 			}).fail(function() { $('#recv2').html('N/A'); });
 
 		$.getJSON('api/electricity/tariff1', function(result){
@@ -97,37 +113,6 @@ $(document).ready(function(){
 
 </script>
 <style>
-html {
-	background-color: black;
-}
-body {
-	margin: auto;
-	width: 400px;
-	font-family: sans-serif;
-	text-align: center;
-}
-table#idd {
-	width: 400px;
-	height: 400px;
-	border: 5px solid grey;
-	background-color: silver;
-	border-style: inset;
-	margin: 40px;
-}
-td.nonfract {
-    color: black;
-    background-color: white;
-}
-td.fract {
-    color: white;
-    background-color: black;
-}
-div.footer {
-	position: fixed;
-	bottom: 2px;
-	left: 2px;
-	font-size: 8px;
-}
 </style></head>
 <body>
 <table id="idd">
@@ -135,40 +120,104 @@ div.footer {
 <h1>DSMRd</h1>
 </td></tr>
 <tr><td>
+<!--fieldset>
+<legend>Meters</legend>
+<table>
+<tr id="m1">
+<th>I</th>
+<td class="nonfract" id="t10"/>
+<td class="nonfract" id="t11"/>
+<td class="nonfract" id="t12"/>
+<td class="nonfract" id="t13"/>
+<td class="nonfract" id="t14"/>
+<td class="nonfract" id="t15"/>
+<td class="fract" id="t16"/>
+<td class="fract" id="t17"/>
+<td class="fract" id="t18"/>
+<td>kWh</td>
+</tr>
+<tr id="m2">
+<th>II</th>
+<td class="nonfract" id="t20"/>
+<td class="nonfract" id="t21"/>
+<td class="nonfract" id="t22"/>
+<td class="nonfract" id="t23"/>
+<td class="nonfract" id="t24"/>
+<td class="nonfract" id="t25"/>
+<td class="fract" id="t26"/>
+<td class="fract" id="t27"/>
+<td class="fract" id="t28"/>
+<td>kWh</td>
+</tr>
+</table>
+</fieldset-->
 <fieldset>
 <legend>Meters</legend>
 <table>
-<tr><th>I</th><td class="nonfract" id="t10"/><td class="nonfract" id="t11"/><td class="nonfract" id="t12"/><td class="nonfract" id="t13"/><td class="nonfract" id="t14"/><td class="nonfract" id="t15"/><td class="fract" id="t16"/><td class="fract" id="t17"/><td class="fract" id="t18"/><td>kWh</td></tr>
-<tr><th>II</th><td class="nonfract" id="t20"/><td class="nonfract" id="t21"/><td class="nonfract" id="t22"/><td class="nonfract" id="t23"/><td class="nonfract" id="t24"/><td class="nonfract" id="t25"/><td class="fract" id="t26"/><td class="fract" id="t27"/><td class="fract" id="t28"/><td>kWh</td></tr>
+  <tr>
+    <th/>
+    <th>Delivered</th>
+    <th>Received</th>
+  </tr>
+  <tr>
+    <th>I</th>
+    <td id="delv1"></td>
+    <td id="recv1"></td>
+  </tr>
+  <tr>
+    <th>II</th>
+    <td id="delv2"></td>
+    <td id="recv2"></td>
+  </tr>
 </table>
-<!--div id="delv1"></div>
-<div id="delv2"></div>
-<div id="recv1"></div>
-<div id="recv2"></div-->
 </fieldset>
 </td></tr>
 <tr><td>
 <fieldset>
 <legend>Instantaneous power</legend>
 <table width="100%">
-<tr><th>Delivered [kW]</th><td><div id="total_power"/></td></tr>
-<tr><th>Received [kW]</th><td><div id="total_recv_power"/></td></tr>
+<tr>
+<th>Delivered [kW]</th>
+<td><div id="total_power"/></td>
+</tr>
+<tr>
+<th>Received [kW]</th>
+<td><div id="total_recv_power"/></td>
+</tr>
 </table>
 </fieldset>
 </td></tr>
 <tr><td>
-
 <fieldset>
 <legend>Per phase</legend>
 <table width="100%">
 <tr><th></th><th>L1</th><th>L2</th><th>L3</th></tr>
-<tr><th>P+(delv) [kW]</th><td id="Pp1"></td><td id="Pp2"></td><td id="Pp3"></td></tr>
-<tr><th>P-(recv) [kW]</th><td id="Pn1"></td><td id="Pn2"></td><td id="Pn3"></td></tr>
-<tr><th>Current [A]</th><td id="A1"></td><td id="A2"></td><td id="A3"></td></tr>
-<tr><th>Voltage [V]</th><td id="V1"></td><td id="V2"></td><td id="V3"></td></tr>
+<tr>
+  <th>P+(delv) [kW]</th>
+  <td id="Pp1"></td>
+  <td id="Pp2"></td>
+  <td id="Pp3"></td>
+</tr>
+<tr>
+  <th>P-(recv) [kW]</th>
+  <td id="Pn1"></td>
+  <td id="Pn2"></td>
+  <td id="Pn3"></td>
+</tr>
+<tr>
+  <th>Current [A]</th>
+  <td id="A1"></td>
+  <td id="A2"></td>
+  <td id="A3"></td>
+</tr>
+<tr>
+  <th>Voltage [V]</th>
+  <td id="V1"></td>
+  <td id="V2"></td>
+  <td id="V3"></td>
+</tr>
 </table>
 </fieldset>
-
 </td></tr>
 </table>
 <div class="footer">&copy;2016 M.J. de Wit (<a href="mailto:info@dsmrd.org">info@dsmrd.org</a>)</div>

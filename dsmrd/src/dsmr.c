@@ -444,7 +444,7 @@ int obis_5mindec(time_t* out1, double* out2, char* in, char* unit) {
 		regsubstr(arg3, sizeof(arg3), in, pmtch, 3);
 		strptime(arg1, "%y%m%d%H%M%S", &lt);
 		*out1 = mktime(&lt);
-		sscanf(arg1, "%lf", out2);
+		sscanf(arg3, "%lf", out2);
 	}
     regfree(&prg);
 

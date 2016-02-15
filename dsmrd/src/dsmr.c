@@ -32,6 +32,10 @@
 #include "crc16.h"
 
 
+#define DEVICE_TYPE_GAS		0x03
+#define DEVICE_TYPE_WATER	0x07
+#define DEVICE_TYPE_THERMAL	0x0D
+
 typedef enum {
 	STATE_UNDEF = 0,
 	STATE_START = 1,
@@ -626,7 +630,7 @@ int dsmr_decode(char* buf, ssize_t len) {
 
 int dsmr_print(dsmr_t dsmr) {
 	printf("-----------------------------\n");
-	printf("%32s: 0x%09lx\n", "bitmask", dsmr->obis);
+	printf("%32s: 0x%09llx\n", "bitmask", dsmr->obis);
 	printf("%32s: '%s'\n", "version", dsmr->version);
 {
 	char buf[256];

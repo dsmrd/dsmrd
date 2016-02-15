@@ -253,7 +253,7 @@ static int http_response_index(handler_t inst, /*@unused@*/ char* method, /*@unu
 	}
 	(void) close(fd);
 
-	(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
+	(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%s", (long unsigned int) strlen(b2), b2);
 
 	rval = write(inst->fd, buf, strlen(buf));
 	if (rval < 0) {
@@ -590,7 +590,7 @@ static int handler_callback(void* data, http_decoder_t decoder) {
 
 				b2 = rest[i].xx[j].f(inst, NULL /*decoder->request_uri*/, arg0, arg1, arg2);
 
-				(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", strlen(b2), b2);
+				(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", (long unsigned int) strlen(b2), b2);
 				rval = write(inst->fd, buf, strlen(buf));
 				if (rval < 0) {
 					error("Cannot write result");

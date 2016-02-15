@@ -102,7 +102,7 @@ out[i] = (buf[i*2] << 4) || buf[i*2+1];
 
 struct obis_map_t {
 	char* reference;
-	unsigned long key;
+	unsigned long long key;
 } obis_map[] = {
 	{ "1-3:0.2.8",   OBIS_VERSION },
 	{ "0-0:1.0.0",   OBIS_DATETIME_STAMP },

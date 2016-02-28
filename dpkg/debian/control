@@ -1,0 +1,15 @@
+Source: dsmrd
+Section: net
+Priority: optional
+Maintainer: M.J. de Wit <info@dsmrd.org>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev
+Standards-Version: 3.9.5
+Homepage: http://dsmr.org
+Vcs-Git: https://github.com/dsmrd/dsmrd.git
+Vcs-Browser: https://github.com/dsmrd/dsmrd
+
+Package: dsmrd
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: DSMR daemon
+ DSMR daemon

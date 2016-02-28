@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
-AC_INIT([dsmrd], [0.1.1], [info@dsmrd.org])
+AC_INIT([dsmrd], [0.9.0], [info@dsmrd.org])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 AC_PROG_CC

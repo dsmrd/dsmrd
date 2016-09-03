@@ -29,6 +29,7 @@
 #include "options.h"
 #include "dsmr.h"
 #include "serial.h"
+#include "avahi.h"
 #include "dispatch.h"
 #include "accept.h"
 #include "daemon.h"
@@ -51,6 +52,7 @@ int main(int argc, char* argv[]) {
 	dispatch_t dis;
 	serial_t ser;
     accept_t acc;
+	avahi_t ava;
 
 	printf("%s -- (C)2016 M.J. de Wit\n", PACKAGE_NAME);
 
@@ -63,12 +65,15 @@ int main(int argc, char* argv[]) {
 	(void) logging_init(options->daemonize, options->verbose, PACKAGE, LOG_DAEMON);
 	ser = serial_init(options->tty, options->baud, options->is_tty, decoder);
 	(void) dsmr_init(dsmr_handle, &dsmr);
+    ava = avahi_init("Slimme Meter");
 	dis = dispatch_init();
 
     acc = accept_init(options->port, &dsmr);
     accept_open(acc, dis);
 
 	(void) serial_open(ser, dis);
+
+    avahi_open(ava, dis);
 
 	dispatch_handle_events(dis);
 

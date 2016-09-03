@@ -26,6 +26,7 @@ dispatch_t dispatch_init();
 int dispatch_register(dispatch_t dis, int fd, /*@null@*/ int (readcb)(void*), /*@null@*/ int (writecb)(void*), /*@null@*/ int (exceptcb)(void*), /*@null@*/ int (closecb)(void*), /*@null@*/ void* inst);
 int dispatch_unregister(dispatch_t dis, void* inst);
 int dispatch_handle_events(dispatch_t dis);
+int dispatch_quit(dispatch_t dis);
 int dispatch_close(dispatch_t dis);
 
 #endif // DISPATCH_H

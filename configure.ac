@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
-AC_INIT([dsmrd], [0.9.1], [info@dsmrd.org])
+AC_INIT([dsmrd], [0.9.2], [info@dsmrd.org])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 AC_PROG_CC
@@ -38,6 +38,8 @@ AC_CHECK_HEADERS([sys/time.h])
 AC_CHECK_HEADERS([syslog.h])
 AC_CHECK_HEADERS([termios.h])
 AC_CHECK_HEADERS([unistd.h])
+AC_CHECK_LIB([avahi-common], [avahi_free])
+AC_CHECK_LIB([avahi-client], [avahi_client_free])
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_FORK
 AC_FUNC_MKTIME

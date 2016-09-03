@@ -31,7 +31,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "logging.h"
-#include "dsmr.h"
 
 
 
@@ -67,6 +66,11 @@ static dispatch_t singleton;
 void termination_handler(int signum) {
 	//printf("SIGTERM!!!\n");
 	singleton->done = 1;
+}
+
+
+void dispatch_quit(dispatch_t inst) {
+	inst->done = 1;
 }
 
 

@@ -43,8 +43,8 @@ dsmrd_SOURCES += crc16.h
 dsmrd_SOURCES += crc16.c
 dsmrd_SOURCES += ini.h
 dsmrd_SOURCES += ini.c
-dsmrd_SOURCES += avahi.h
-dsmrd_SOURCES += avahi.c
+dsmrd_SOURCES += dnssd.h
+dsmrd_SOURCES += dnssd.c
 dsmrd_SOURCES += list.h
 dsmrd_SOURCES += list.c
 

@@ -29,7 +29,7 @@
 #include "options.h"
 #include "dsmr.h"
 #include "serial.h"
-#include "avahi.h"
+#include "dnssd.h"
 #include "dispatch.h"
 #include "accept.h"
 #include "daemon.h"

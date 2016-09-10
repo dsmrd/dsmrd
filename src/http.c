@@ -239,7 +239,7 @@ static int http_response_index(handler_t inst, /*@unused@*/ char* method, /*@unu
 	char index[PATH_MAX];
 	char buf[1024];
 	int fd;
-	int rval;
+	int rval = 0;
 	long content_length;
 	ssize_t sz;
 	struct stat st;
@@ -254,8 +254,7 @@ static int http_response_index(handler_t inst, /*@unused@*/ char* method, /*@unu
 	if (fd < 0) {
 		error("Open error '%s'", index);
 
-		content_length = 0;
-		(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n", content_length);
+		(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
 		sz = write(inst->fd, buf, strlen(buf));
 		if (sz < 0) {
 			error("Cannot write header");
@@ -564,65 +563,72 @@ struct {
 	{ "/api/gas/delivered", {}, { { "GET", http_response_gas_delivered } } },
 };
 
+static int http_response_rest(handler_t inst, http_decoder_t decoder) {
+	regmatch_t pmatch[5];
+	char buf[16*2014];
+	int i, j=0;
+	int rval;
+
+	for (i=0; i<sizeof(rest)/sizeof(rest[0]); i++) {
+		if (0 == regexec(&rest[i].regex, decoder->request_uri, 5, pmatch, 0)) {
+			for (j=0; j<sizeof(rest[i].xx)/sizeof(rest[0].xx[i]); j++) {
+				if (strcmp(rest[i].xx[j].method, decoder->request_method) == 0) {
+					break;
+				}
+			}
+			break;
+		}
+	}
+
+	if (i == sizeof(rest)/sizeof(rest[0])) {
+		debug("404 Not found");
+		(void) snprintf(buf, sizeof(buf), "HTTP/1.1 404 Not found\r\nContent-Length: 0\r\n\r\n");
+		rval = write(inst->fd, buf, strlen(buf));
+		if (rval < 0) {
+			error("Cannot write 404");
+		}
+	} else {
+		if (j == sizeof(rest[i].xx)/sizeof(rest[0].xx[i])) {
+			debug("405 Method Not Allowed");
+			(void) snprintf(buf, sizeof(buf), "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n");
+			rval = write(inst->fd, buf, strlen(buf));
+			if (rval < 0) {
+				error("Cannot write 405");
+			}
+		} else {
+			char buf[256];
+			char* b2;
+			char arg0[256];
+			char arg1[256];
+			char arg2[256];
+
+			(void) regsubstr(arg0, sizeof(arg0), decoder->request_uri, pmatch, 0);
+			(void) regsubstr(arg1, sizeof(arg1), decoder->request_uri, pmatch, 1);
+			(void) regsubstr(arg2, sizeof(arg2), decoder->request_uri, pmatch, 2);
+
+			b2 = rest[i].xx[j].f(inst, NULL /*decoder->request_uri*/, arg0, arg1, arg2);
+
+			(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", (long unsigned int) strlen(b2), b2);
+			rval = write(inst->fd, buf, strlen(buf));
+			if (rval < 0) {
+				error("Cannot write result");
+			}
+		}
+	}
+
+	return rval;
+}
+
 static int handler_callback(void* data, http_decoder_t decoder) {
 	handler_t inst = (handler_t) data;
-	char buf[16*2014];
 	int rval = 0;
 
 	info("Served %s %s", decoder->request_method, decoder->request_uri);
 
 	if (strncmp("/api", decoder->request_uri, 4) != 0) {
-		http_response_index(inst, decoder->request_method, decoder->request_uri);
+		rval = http_response_index(inst, decoder->request_method, decoder->request_uri);
 	} else {
-		regmatch_t pmatch[5];
-		int i, j=0;
-
-		for (i=0; i<sizeof(rest)/sizeof(rest[0]); i++) {
-			if (0 == regexec(&rest[i].regex, decoder->request_uri, 5, pmatch, 0)) {
-				for (j=0; j<sizeof(rest[i].xx)/sizeof(rest[0].xx[i]); j++) {
-					if (strcmp(rest[i].xx[j].method, decoder->request_method) == 0) {
-						break;
-					}
-				}
-				break;
-			}
-		}
-
-		if (i == sizeof(rest)/sizeof(rest[0])) {
-			debug("404 Not found");
-			(void) snprintf(buf, sizeof(buf), "HTTP/1.1 404 Not found\r\nContent-Length: 0\r\n\r\n");
-			rval = write(inst->fd, buf, strlen(buf));
-			if (rval < 0) {
-				error("Cannot write 404");
-			}
-		} else {
-			if (j == sizeof(rest[i].xx)/sizeof(rest[0].xx[i])) {
-				debug("405 Method Not Allowed");
-				(void) snprintf(buf, sizeof(buf), "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n");
-				rval = write(inst->fd, buf, strlen(buf));
-				if (rval < 0) {
-					error("Cannot write 405");
-				}
-			} else {
-				char buf[256];
-				char* b2;
-				char arg0[256];
-				char arg1[256];
-				char arg2[256];
-
-				(void) regsubstr(arg0, sizeof(arg0), decoder->request_uri, pmatch, 0);
-				(void) regsubstr(arg1, sizeof(arg1), decoder->request_uri, pmatch, 1);
-				(void) regsubstr(arg2, sizeof(arg2), decoder->request_uri, pmatch, 2);
-
-				b2 = rest[i].xx[j].f(inst, NULL /*decoder->request_uri*/, arg0, arg1, arg2);
-
-				(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", (long unsigned int) strlen(b2), b2);
-				rval = write(inst->fd, buf, strlen(buf));
-				if (rval < 0) {
-					error("Cannot write result");
-				}
-			}
-		}
+		rval = http_response_rest(inst, decoder);
 	}
 
 	return rval;

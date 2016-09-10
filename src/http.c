@@ -237,30 +237,58 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len) {
 
 static int http_response_index(handler_t inst, /*@unused@*/ char* method, /*@unused@*/ char* uri) {
 	char index[PATH_MAX];
-	char buf[32*2014];
-	char b2[32*2014];
+	char buf[1024];
 	int fd;
-	ssize_t rval;
+	int rval;
+	long content_length;
+	ssize_t sz;
+	struct stat st;
 
-	(void) snprintf(index, sizeof(index), "%s/%s", options.wwwdir, "index.html");
+	if (strcmp(uri, "/") == 0) {
+		(void) snprintf(index, sizeof(index), "%s/%s", options.wwwdir, "index.html");
+	} else {
+		(void) snprintf(index, sizeof(index), "%s/%s", options.wwwdir, uri);
+	}
+
 	fd = open(index, O_RDONLY);
 	if (fd < 0) {
 		error("Open error '%s'", index);
-	}
-	rval = read(fd, b2, sizeof(b2));
-	if (rval < 0) {
-		error("Read error");
+
+		content_length = 0;
+		(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n", content_length);
+		sz = write(inst->fd, buf, strlen(buf));
+		if (sz < 0) {
+			error("Cannot write header");
+		}
+	} else {
+		rval = fstat(fd, &st);
+		if (rval != 0) {
+			error("Cannot stat file");
+		} else {
+			content_length = st.st_size;
+
+			(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n", content_length);
+			sz = write(inst->fd, buf, strlen(buf));
+			if (sz < 0) {
+				error("Cannot write header");
+			}
+
+			while (sz > 0) {
+				sz = read(fd, buf, sizeof(buf));
+				if (sz < 0) {
+					error("Read error");
+				} else {
+					sz = write(inst->fd, buf, sz);
+					if (sz < 0) {
+						error("Cannot write result");
+					}
+				}
+			}
+		}
 	}
 	(void) close(fd);
 
-	(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%s", (long unsigned int) strlen(b2), b2);
-
-	rval = write(inst->fd, buf, strlen(buf));
-	if (rval < 0) {
-		error("Cannot write result");
-	}
-
-	return (int) rval;
+	return rval;
 }
 
 static char* http_response_tariff1(handler_t inst, char* method, ...) {
@@ -297,7 +325,6 @@ static char* http_response_tariff_received(handler_t inst, char* method, ...) {
 	//int arg1 = atoi(va_arg(ap, char*));
 
 	if (strcmp("/api/electricity/tariffs/1/received", arg0) == 0) {
-		//if (arg1 == 1) {
 		t = inst->dsmr->electr_by_client_tariff1;
 	} else {
 		t = inst->dsmr->electr_by_client_tariff2;
@@ -321,7 +348,6 @@ static char* http_response_tariff_delivered(handler_t inst, char* method, ...) {
 	//int arg1 = atoi(va_arg(ap, char*));
 
 	if (strcmp("/api/electricity/tariffs/1/delivered", arg0) == 0) {
-		//if (arg1 == 1) {
 		t = inst->dsmr->electr_to_client_tariff1;
 	} else {
 		t = inst->dsmr->electr_to_client_tariff2;

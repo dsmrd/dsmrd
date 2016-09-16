@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include "rbtree.h"
 
 
 typedef int (*rbtree_less_then_t)(void* a, void* b);
@@ -419,90 +420,5 @@ rbtree_t rbtree_init(rbtree_less_then_t less_then, rbtree_equals_t equals, rbtre
 
 void rbtree_exit(rbtree_t inst) {
 	free(inst);
-}
-
-int compLT(void* a, void* b) {
-	return strcmp(a, b) < 0;
-}
-
-int compEQ(void* a, void* b) {
-	return strcmp(a, b) == 0;
-}
-
-void FK(void* k) {
-	free(k);
-}
-
-void FV(void* k) {
-	//free(k);
-}
-
-void main(int argc, char **argv) {
-	int a, maxnum, ct;
-	rbnode_t n;
-	rbtree_t t;
-	void* v;
-
-	t = rbtree_init(compLT, compEQ, FK, FV);
-	//r.root = NIL;
-	//r.less_then = compLT;
-	//r.equals = compEQ;
-	//r.free_key = FK;
-	//r.free_value = FV;
-
-	// command-line:
-	//
-	//   rbt maxnum
-	//
-	//   rbt 2000
-	//       process 2000 records
-	//
-	//
-
-	struct {
-		char* key;
-		int inserted;
-	} s[] = {
-		{ "A", 0 },
-		{ "B", 0 },
-		{ "C", 0 },
-		{ "D", 0 },
-		{ "E", 0 },
-		{ "F", 0 },
-		{ "G", 0 },
-		{ "H", 0 },
-		{ "I", 0 },
-		{ "J", 0 },
-	};
-
-	//if (argc > 0) {
-		//maxnum = atoi(argv[1]);
-	//} else {
-		maxnum = 500;
-	//}
-
-	srand(time(NULL));
-
-	for (ct = maxnum; ct; ct--) {
-		a = rand() % 9 + 1;
-		if ((n = _rbtree_find_node(s[a].key, t)) != NULL) {
-			printf("Deleting %s value %s\n", (char*)n->key, (char*)n->value);
-			v = _rbtree_delete_node(t, n);
-			FV(v);
-		} else {
-			v = rbtree_put(t, strdup(s[a].key), s[a].key);
-			printf("Inserting %s\n", s[a].key);
-			printf("Value %p returned\n", v);
-		}
-	}
-
-	for (a = 0; a < 9; a++) {
-		if ((rbtree_get(t, s[a].key)) != NULL) {
-			printf("Deleting %s *)\n", s[a].key);
-			//v = _rbtree_delete_node(t, n);
-			v = rbtree_delete(t, s[a].key);
-			FV(v);
-		}
-	}
 }
 

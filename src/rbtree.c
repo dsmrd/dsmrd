@@ -73,22 +73,27 @@ static void rbnode_rotate_left(rbnode_t x, rbtree_t t) {
 
 	// establish x->right link
 	x->right = y->left;
-	if (y->left != NIL) y->left->parent = x;
+	if (y->left != NIL) {
+		y->left->parent = x;
+	}
 
 	// establish y->parent link
 	if (y != NIL) y->parent = x->parent;
 	if (x->parent) {
-		if (x == x->parent->left)
+		if (x == x->parent->left) {
 			x->parent->left = y;
-		else
+		} else {
 			x->parent->right = y;
+		}
 	} else {
 		t->root = y;
 	}
 
 	// link x and y
 	y->left = x;
-	if (x != NIL) x->parent = y;
+	if (x != NIL) {
+		x->parent = y;
+	}
 }
 
 static void rbnode_rotate_right(rbnode_t x, rbtree_t t) {
@@ -101,22 +106,27 @@ static void rbnode_rotate_right(rbnode_t x, rbtree_t t) {
 
 	// establish x->left link
 	x->left = y->right;
-	if (y->right != NIL) y->right->parent = x;
+	if (y->right != NIL) {
+		y->right->parent = x;
+	}
 
 	// establish y->parent link
 	if (y != NIL) y->parent = x->parent;
 	if (x->parent) {
-		if (x == x->parent->right)
+		if (x == x->parent->right) {
 			x->parent->right = y;
-		else
+		} else {
 			x->parent->left = y;
+		}
 	} else {
 		t->root = y;
 	}
 
 	// link x and y
 	y->right = x;
-	if (x != NIL) x->parent = y;
+	if (x != NIL) {
+		x->parent = y;
+	}
 }
 
 static void rbnode_insert_fixup(rbnode_t x, rbtree_t t) {
@@ -190,7 +200,9 @@ rbnode_t rbnode_insert(void* key, void* value, rbtree_t t) {
 	current = t->root;
 	parent = 0;
 	while (current != NIL) {
-		if (t->equals(key, current->key)) return (current);
+		if (t->equals(key, current->key)) {
+			return (current);
+		}
 		parent = current;
 		current = t->less_than(key, current->key) ?
 			current->left : current->right;
@@ -210,10 +222,11 @@ rbnode_t rbnode_insert(void* key, void* value, rbtree_t t) {
 
 	// insert node in tree
 	if(parent) {
-		if(t->less_than(key, parent->key))
+		if(t->less_than(key, parent->key)) {
 			parent->left = x;
-		else
+		} else {
 			parent->right = x;
+		}
 	} else {
 		t->root = x;
 	}
@@ -290,33 +303,39 @@ void rbnode_delete(rbnode_t z, rbtree_t t) {
 	// delete node z from tree
 	//
 
-	if (!z || z == NIL) return;
+	if ((!z) || (z == NIL)) {
+		return;
+	}
 
-
-	if (z->left == NIL || z->right == NIL) {
+	if ((z->left == NIL) || (z->right == NIL)) {
 		// y has a NIL node as a child
 		y = z;
 	} else {
 		// find tree successor with a NIL node as a child
 		y = z->right;
-		while (y->left != NIL) y = y->left;
+		while (y->left != NIL) {
+			y = y->left;
+		}
 	}
 
 	// x is y's only child
-	if (y->left != NIL)
+	if (y->left != NIL) {
 		x = y->left;
-	else
+	} else {
 		x = y->right;
+	}
 
 	// remove y from the parent chain
 	x->parent = y->parent;
-	if (y->parent)
-		if (y == y->parent->left)
+	if (y->parent) {
+		if (y == y->parent->left) {
 			y->parent->left = x;
-		else
+		} else {
 			y->parent->right = x;
-	else
+		}
+	} else {
 		t->root = x;
+	}
 
 	if (y != z) {
 		t->free_key(z->key);
@@ -328,8 +347,9 @@ void rbnode_delete(rbnode_t z, rbtree_t t) {
 		t->free_value(y->value);
 	}
 
-	if (y->color == BLACK)
+	if (y->color == BLACK) {
 		rbnode_delete_fixup(x, t);
+	}
 
 	free (y);
 }
@@ -341,12 +361,15 @@ rbnode_t rbnode_find(void* key, rbtree_t t) {
 	//
 
 	rbnode_t current = t->root;
-	while(current != NIL)
-		if(t->equals(key, current->key))
+	while(current != NIL) {
+		if(t->equals(key, current->key)) {
 			return (current);
-		else
+		} else {
 			current = t->less_than(key, current->key) ?
 				current->left : current->right;
+		}
+	}
+
 	return(0);
 }
 

@@ -47,6 +47,8 @@ dsmrd_SOURCES += dnssd.h
 dsmrd_SOURCES += dnssd.c
 dsmrd_SOURCES += list.h
 dsmrd_SOURCES += list.c
+dsmrd_SOURCES += rbtree.h
+dsmrd_SOURCES += rbtree.c
 
 noinst_PROGRAMS = p1sim
 p1sim_SOURCES = p1sim.c

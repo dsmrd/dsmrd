@@ -34,6 +34,7 @@ void rbtree_exit(rbtree_t inst);
 void* rbtree_put(rbtree_t t, void* key, void* value);
 void* rbtree_get(rbtree_t inst, void* key);
 void* rbtree_delete(rbtree_t inst, void* key);
+void rbtree_foreach(rbtree_t inst, void (*callback)(void*, void*));
 
 #endif // RBTREE_H
 

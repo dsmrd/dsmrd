@@ -310,7 +310,7 @@ static void* _rbtree_delete_node(rbtree_t t, rbnode_t z) {
 	//
 
 	if ((!z) || (z == NIL)) {
-		return;
+		return NULL;
 	}
 
 	if ((z->left == NIL) || (z->right == NIL)) {
@@ -418,7 +418,35 @@ rbtree_t rbtree_init(rbtree_less_then_t less_then, rbtree_equals_t equals, rbtre
 	return inst;
 }
 
+static void _rbtree_clear(rbtree_t inst, rbnode_t node) {
+	if (node != NIL) {
+		_rbtree_clear(inst, node->left);
+		_rbtree_clear(inst, node->right);
+		inst->free_key(node->key);
+		inst->free_value(node->value);
+		free(node);
+	}
+}
+
+void rbtree_clear(rbtree_t inst) {
+	_rbtree_clear(inst, inst->root);
+	inst->root = NIL;
+}
+
 void rbtree_exit(rbtree_t inst) {
+	_rbtree_clear(inst, inst->root);
 	free(inst);
+}
+
+void _rbtree_foreach_node(rbnode_t node, void (*callback)(void*, void*)) {
+	if (node != NIL) {
+		_rbtree_foreach_node(node->left, callback);
+		callback(node->key, node->value);
+		_rbtree_foreach_node(node->right, callback);
+	}
+}
+
+void rbtree_foreach(rbtree_t inst, void (*callback)(void*, void*)) {
+	_rbtree_foreach_node(inst->root, callback);
 }
 

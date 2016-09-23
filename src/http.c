@@ -330,7 +330,7 @@ static int handler_callback(void* data, http_decoder_t decoder) {
 
 int string_less_then(void* a, void* b) { return strcmp(a, b) < 0; }
 int string_equals(void* a, void* b) { return strcmp(a,b) == 0; }
-void string_free(void* a) { free(a); }
+void string_free(void* a) { }
 void rbtree_free(void* a) { rbtree_exit(a); }
 void resource_free(void* a) { free(a); }
 

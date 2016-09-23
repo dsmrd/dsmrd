@@ -100,61 +100,72 @@ out[i] = (buf[i*2] << 4) || buf[i*2+1];
 */
 
 
+typedef enum {
+	OBIS_TYPE_NULL,
+	OBIS_TYPE_DOUBLE,
+	OBIS_TYPE_INTEGER,
+	OBIS_TYPE_TIME,
+	OBIS_TYPE_5MIN,
+	OBIS_TYPE_STRING,
+} obis_type_t;
+
 struct obis_map_t {
 	char* reference;
-	unsigned long long key;
+	obis_type_t type;
+	char* unit;
 } obis_map[] = {
-	{ "1-3:0.2.8",   OBIS_VERSION },
-	{ "0-0:1.0.0",   OBIS_DATETIME_STAMP },
-	{ "0-0:96.1.1",  OBIS_EQUIPMENT_IDENTIFIER },
-	{ "1-0:1.8.1",   OBIS_ELECTR_TO_CLIENT_TARIFF1 },
-	{ "1-0:1.8.2",   OBIS_ELECTR_TO_CLIENT_TARIFF2 },
-	{ "1-0:2.8.1",   OBIS_ELECTR_BY_CLIENT_TARIFF1 },
-	{ "1-0:2.8.2",   OBIS_ELECTR_BY_CLIENT_TARIFF2 },
-    { "0-0:96.14.0", OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR },
-    { "1-0:1.7.0",   OBIS_ELECTR_POWER_DELIVERED },
-    { "1-0:2.7.0",   OBIS_ELECTR_POWER_RECEIVED },
-    { "0-0:96.7.21", OBIS_ELECTR_NOF_POWER_FAILURES },
-	{ "0-0:96.7.9",  OBIS_ELECTR_NOF_LONG_POWER_FAILURES },
-	{ "1-0:99.97.0", OBIS_ELECTR_POWER_FAILURE_EVENT_LOG },
-	{ "1-0:32.32.0", OBIS_ELECTR_NOF_VOLTAGE_SAGE_L1 },
-	{ "1-0:52.32.0", OBIS_ELECTR_NOF_VOLTAGE_SAGE_L2 },
-	{ "1-0:72.32.0", OBIS_ELECTR_NOF_VOLTAGE_SAGE_L3 },
-	{ "1-0:32.36.0", OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L1 },
-	{ "1-0:52.36.0", OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L2 },
-	{ "1-0:72.36.0", OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L3 },
-	{ "0-0:96.13.0", OBIS_ELECTR_TEXT_MESSAGE0 },
-	{ "0-0:96.13.1", OBIS_ELECTR_TEXT_MESSAGE1 }, // Not in standard!!
-	{ "1-0:32.7.0",  OBIS_ELECTR_INST_VOLTAGE_L1 },
-	{ "1-0:52.7.0",  OBIS_ELECTR_INST_VOLTAGE_L2 },
-	{ "1-0:72.7.0",  OBIS_ELECTR_INST_VOLTAGE_L3 },
-	{ "1-0:31.7.0",  OBIS_ELECTR_INST_CURRENT_L1 },
-	{ "1-0:51.7.0",  OBIS_ELECTR_INST_CURRENT_L2 },
-	{ "1-0:71.7.0",  OBIS_ELECTR_INST_CURRENT_L3 },
-	{ "1-0:21.7.0",  OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L1 },
-	{ "1-0:41.7.0",  OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L2 },
-	{ "1-0:61.7.0",  OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L3 },
-	{ "1-0:22.7.0",  OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L1 },
-	{ "1-0:42.7.0",  OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L2 },
-	{ "1-0:62.7.0",  OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L3 },
-	{ "0-1:24.1.0",  OBIS_DEVICE1_TYPE },
-	{ "0-1:96.1.0",  OBIS_DEVICE1_EQUIPMENT_IDENTIFIER },
-	{ "0-1:24.2.1",  OBIS_DEVICE1_LAST_5MIN_VALUE },
-	{ "0-2:24.1.0",  OBIS_DEVICE2_TYPE },
-	{ "0-2:96.1.0",  OBIS_DEVICE2_EQUIPMENT_IDENTIFIER },
-	{ "0-2:24.2.1",  OBIS_DEVICE2_LAST_5MIN_VALUE },
-	{ "0-3:24.1.0",  OBIS_DEVICE3_TYPE },
-	{ "0-3:96.1.0",  OBIS_DEVICE3_EQUIPMENT_IDENTIFIER },
-	{ "0-3:24.2.1",  OBIS_DEVICE3_LAST_5MIN_VALUE },
-	{ "0-4:24.1.0",  OBIS_DEVICE4_TYPE },
-	{ "0-4:96.1.0",  OBIS_DEVICE4_EQUIPMENT_IDENTIFIER },
-	{ "0-4:24.2.1",  OBIS_DEVICE4_LAST_5MIN_VALUE },
+	{ OBIS_VERSION, OBIS_TYPE_STRING, NULL },
+	{ OBIS_DATETIME_STAMP, OBIS_TYPE_TIME, NULL },
+	{ OBIS_EQUIPMENT_IDENTIFIER, OBIS_TYPE_STRING, NULL },
+	{ OBIS_ELECTR_TO_CLIENT_TARIFF1, OBIS_TYPE_DOUBLE, "kWh" },
+	{ OBIS_ELECTR_TO_CLIENT_TARIFF2, OBIS_TYPE_DOUBLE, "kWh" },
+	{ OBIS_ELECTR_BY_CLIENT_TARIFF1, OBIS_TYPE_DOUBLE, "kWh" },
+	{ OBIS_ELECTR_BY_CLIENT_TARIFF2, OBIS_TYPE_DOUBLE, "kWh" },
+	{ OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_ELECTR_POWER_DELIVERED, OBIS_TYPE_DOUBLE, "kW" },
+	{ OBIS_ELECTR_POWER_RECEIVED, OBIS_TYPE_DOUBLE, "kW" },
+	{ OBIS_ELECTR_NOF_POWER_FAILURES, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_ELECTR_NOF_LONG_POWER_FAILURES, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_ELECTR_POWER_FAILURE_EVENT_LOG, OBIS_TYPE_NULL, NULL },
+	{ OBIS_ELECTR_NOF_VOLTAGE_SAGE_L1, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_ELECTR_NOF_VOLTAGE_SAGE_L2, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_ELECTR_NOF_VOLTAGE_SAGE_L3, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L1, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L2, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L3, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_ELECTR_TEXT_MESSAGE0, OBIS_TYPE_STRING, NULL },
+	{ OBIS_ELECTR_TEXT_MESSAGE1, OBIS_TYPE_STRING, NULL }, // Not in standard!!
+	{ OBIS_ELECTR_INST_VOLTAGE_L1, OBIS_TYPE_DOUBLE, "V" },
+	{ OBIS_ELECTR_INST_VOLTAGE_L2, OBIS_TYPE_DOUBLE, "V" },
+	{ OBIS_ELECTR_INST_VOLTAGE_L3, OBIS_TYPE_DOUBLE, "V" },
+	{ OBIS_ELECTR_INST_CURRENT_L1, OBIS_TYPE_DOUBLE, "A" },
+	{ OBIS_ELECTR_INST_CURRENT_L2, OBIS_TYPE_DOUBLE, "A" },
+	{ OBIS_ELECTR_INST_CURRENT_L3, OBIS_TYPE_DOUBLE, "A" },
+	{ OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L1, OBIS_TYPE_DOUBLE, "kW" },
+	{ OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L2, OBIS_TYPE_DOUBLE, "kW" },
+	{ OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L3, OBIS_TYPE_DOUBLE, "kW" },
+	{ OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L1, OBIS_TYPE_DOUBLE, "kW" },
+	{ OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L2, OBIS_TYPE_DOUBLE, "kW" },
+	{ OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L3, OBIS_TYPE_DOUBLE, "kW" },
+	{ OBIS_DEVICE1_TYPE, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_DEVICE1_EQUIPMENT_IDENTIFIER, OBIS_TYPE_STRING, NULL },
+	{ OBIS_DEVICE1_LAST_5MIN_VALUE, OBIS_TYPE_5MIN, NULL },
+	{ OBIS_DEVICE2_TYPE, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_DEVICE2_EQUIPMENT_IDENTIFIER, OBIS_TYPE_STRING, NULL },
+	{ OBIS_DEVICE2_LAST_5MIN_VALUE, OBIS_TYPE_5MIN, NULL },
+	{ OBIS_DEVICE3_TYPE, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_DEVICE3_EQUIPMENT_IDENTIFIER, OBIS_TYPE_STRING, NULL },
+	{ OBIS_DEVICE3_LAST_5MIN_VALUE, OBIS_TYPE_5MIN, NULL },
+	{ OBIS_DEVICE4_TYPE, OBIS_TYPE_INTEGER, NULL },
+	{ OBIS_DEVICE4_EQUIPMENT_IDENTIFIER, OBIS_TYPE_STRING, NULL },
+	{ OBIS_DEVICE4_LAST_5MIN_VALUE, OBIS_TYPE_5MIN, NULL },
 };
 
-int obis_dec(double* out, char* in, char* unit);
-int obis_decint(int* out, char* in);
-int obis_hexdec(char* out, char* in);
-int obis_5mindec(time_t* out1, double*, char* in, char* unit);
+int obis_decode_double(obis_object_t, char* in, char* unit);
+int obis_decode_integer(obis_object_t, char* in);
+int obis_decode_string(obis_object_t, char* in);
+int obis_decode_5min(obis_object_t, char* in, char* unit);
+int obis_decode_time(obis_object_t, char* in);
 
 static int dsmr_process() {
 	int i;
@@ -188,172 +199,56 @@ static int dsmr_process() {
 				if (j == (sizeof(obis_map)/sizeof(struct obis_map_t))) {
 					error("Unknown OBIS code: '%s'", dsmr_decoder.buffer[i]);
 				} else {
+					obis_object_t de;
+					if ((de = rbtree_get(dsmr_decoder.pkt->objects, obis_reference)) == NULL) {
+						de = (obis_object_t) malloc(sizeof(struct obis_object_struct_t));
+						rbtree_put(dsmr_decoder.pkt->objects, strdup(obis_reference), de);
+					}
+
+					switch (obis_map[j].type) {
+						case OBIS_TYPE_DOUBLE:
+							rval = obis_decode_double(de, obis_value, obis_map[j].unit);
+							break;
+						case OBIS_TYPE_INTEGER:
+							rval = obis_decode_integer(de, obis_value);
+							break;
+						case OBIS_TYPE_TIME:
+							rval = obis_decode_time(de, obis_value);
+							break;
+						case OBIS_TYPE_5MIN:
+							//if (dsmr_decoder.pkt->device1_type == 3) {
+							rval = obis_decode_5min(de, obis_value, obis_map[j].unit);
+							//} else {
+							//info("Unknown device MBUS 1");
+							//rval = -1;
+							//}
+							break;
+						case OBIS_TYPE_STRING:
+							rval = obis_decode_string(de, obis_value);
+							break;
+						case OBIS_TYPE_NULL:
+							break;
+					}
+
+/*
 					switch (obis_map[j].key) {
-						case OBIS_VERSION:
-							rval = obis_hexdec(dsmr_decoder.pkt->version, obis_value);
-							break;
-						case OBIS_DATETIME_STAMP:
-							{
-								struct tm lt;
-								strptime(obis_value, "(%y%m%d%H%M%SW)", &lt);
-								dsmr_decoder.pkt->datetime_stamp = mktime(&lt);
-							}
-							break;
-						case OBIS_EQUIPMENT_IDENTIFIER:
-							rval = obis_hexdec(dsmr_decoder.pkt->equipment_identifier, obis_value);
-							break;
-						case OBIS_ELECTR_TO_CLIENT_TARIFF1:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_to_client_tariff1, obis_value, "kWh");
-							break;
-						case OBIS_ELECTR_TO_CLIENT_TARIFF2:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_to_client_tariff2, obis_value, "kWh");
-							break;
-						case OBIS_ELECTR_BY_CLIENT_TARIFF1:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_by_client_tariff1, obis_value, "kWh");
-							break;
-						case OBIS_ELECTR_BY_CLIENT_TARIFF2:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_by_client_tariff2, obis_value, "kWh");
-							break;
-						case OBIS_ELECTR_POWER_DELIVERED:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_power_delivered, obis_value, "kW");
-							break;
-						case OBIS_ELECTR_POWER_RECEIVED:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_power_received, obis_value, "kW");
-							break;
-						case OBIS_ELECTR_INST_CURRENT_L1:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_current_l1, obis_value, "A");
-							break;
-						case OBIS_ELECTR_INST_CURRENT_L2:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_current_l2, obis_value, "A");
-							break;
-						case OBIS_ELECTR_INST_CURRENT_L3:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_current_l3, obis_value, "A");
-							break;
-						case OBIS_ELECTR_INST_VOLTAGE_L1:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l1, obis_value, "V");
-							break;
-						case OBIS_ELECTR_INST_VOLTAGE_L2:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l2, obis_value, "V");
-							break;
-						case OBIS_ELECTR_INST_VOLTAGE_L3:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_voltage_l3, obis_value, "V");
-							break;
-						case OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L1:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l1, obis_value, "kW");
-							break;
-						case OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L2:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l2, obis_value, "kW");
-							break;
-						case OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L3:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_delv_l3, obis_value, "kW");
-							break;
-						case OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L1:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l1, obis_value, "kW");
-							break;
-						case OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L2:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l2, obis_value, "kW");
-							break;
-						case OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L3:
-							rval = obis_dec(&dsmr_decoder.pkt->electr_inst_active_power_recv_l3, obis_value, "kW");
-							break;
-						case OBIS_ELECTR_NOF_POWER_FAILURES:
-							rval = obis_decint(&dsmr_decoder.pkt->electr_nof_power_failures, obis_value);
-							break;
-						case OBIS_ELECTR_NOF_LONG_POWER_FAILURES:
-							rval = obis_decint(&dsmr_decoder.pkt->electr_nof_long_power_failures, obis_value);
-							break;
-						case OBIS_ELECTR_NOF_VOLTAGE_SAGE_L1:
-							rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_sage_l1, obis_value);
-							break;
-						case OBIS_ELECTR_NOF_VOLTAGE_SAGE_L2:
-							rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_sage_l2, obis_value);
-							break;
-						case OBIS_ELECTR_NOF_VOLTAGE_SAGE_L3:
-							rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_sage_l3, obis_value);
-							break;
-						case OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L1:
-							rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_swells_l1, obis_value);
-							break;
-						case OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L2:
-							rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_swells_l2, obis_value);
-							break;
-						case OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L3:
-							rval = obis_decint(&dsmr_decoder.pkt->electr_nof_voltage_swells_l3, obis_value);
-							break;
 						case OBIS_DEVICE1_TYPE:
-							rval = obis_decint(&dsmr_decoder.pkt->device1_type, obis_value);
+							dsmr_decoder.pkt->device1_type = de->v.i;
+							//info("MBUS device 1 is %d", dsmr_decoder.pkt->device1_type);
 							break;
 						case OBIS_DEVICE2_TYPE:
-							rval = obis_decint(&dsmr_decoder.pkt->device2_type, obis_value);
+							dsmr_decoder.pkt->device2_type = de->v.i;
 							break;
 						case OBIS_DEVICE3_TYPE:
-							rval = obis_decint(&dsmr_decoder.pkt->device3_type, obis_value);
+							dsmr_decoder.pkt->device3_type = de->v.i;
 							break;
 						case OBIS_DEVICE4_TYPE:
-							rval = obis_decint(&dsmr_decoder.pkt->device4_type, obis_value);
+							dsmr_decoder.pkt->device4_type = de->v.i;
 							break;
-						case OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR:
-							//rval = obis_hexdec(dsmr_decoder.pkt->electr_tariff_indicator, obis_value);
-							rval = obis_decint(&dsmr_decoder.pkt->electr_tariff_indicator, obis_value);
-							break;
-						case OBIS_ELECTR_TEXT_MESSAGE0:
-							rval = obis_hexdec(dsmr_decoder.pkt->electr_text_message, obis_value);
-							break;
-						case OBIS_DEVICE1_EQUIPMENT_IDENTIFIER:
-							rval = obis_hexdec(dsmr_decoder.pkt->device1_equipment_identifier, obis_value);
-							break;
-						case OBIS_DEVICE2_EQUIPMENT_IDENTIFIER:
-							rval = obis_hexdec(dsmr_decoder.pkt->device2_equipment_identifier, obis_value);
-							break;
-						case OBIS_DEVICE3_EQUIPMENT_IDENTIFIER:
-							rval = obis_hexdec(dsmr_decoder.pkt->device3_equipment_identifier, obis_value);
-							break;
-						case OBIS_DEVICE4_EQUIPMENT_IDENTIFIER:
-							rval = obis_hexdec(dsmr_decoder.pkt->device4_equipment_identifier, obis_value);
-							break;
-						case OBIS_DEVICE1_LAST_5MIN_VALUE:
-							if (dsmr_decoder.pkt->device1_type == 3) {
-								rval = obis_5mindec(&dsmr_decoder.pkt->device1_capture_time,
-										&dsmr_decoder.pkt->device1_last_5min_value, obis_value, "m3");
-							} else {
-								rval = -1;
-							}
-							break;
-						case OBIS_DEVICE2_LAST_5MIN_VALUE:
-							if (dsmr_decoder.pkt->device2_type == 3) {
-								rval = obis_5mindec(&dsmr_decoder.pkt->device2_capture_time,
-										&dsmr_decoder.pkt->device2_last_5min_value, obis_value, "m3");
-							} else {
-								rval = -1;
-							}
-							break;
-						case OBIS_DEVICE3_LAST_5MIN_VALUE:
-							if (dsmr_decoder.pkt->device3_type == 3) {
-								rval = obis_5mindec(&dsmr_decoder.pkt->device3_capture_time,
-										&dsmr_decoder.pkt->device3_last_5min_value, obis_value, "m3");
-							} else {
-								rval = -1;
-							}
-							break;
-						case OBIS_DEVICE4_LAST_5MIN_VALUE:
-							if (dsmr_decoder.pkt->device4_type == 3) {
-								rval = obis_5mindec(&dsmr_decoder.pkt->device4_capture_time,
-										&dsmr_decoder.pkt->device4_last_5min_value, obis_value, "m3");
-							} else {
-								rval = -1;
-							}
-							break;
-						case OBIS_ELECTR_POWER_FAILURE_EVENT_LOG:
-						case OBIS_ELECTR_TEXT_MESSAGE1: // Not in standard!!
-							// Silently drop...
-							break;
-						default:
-							error("Implementation error");
 					}
+*/
 					if (rval != 0) {
-						error("Failed to decode");
-					} else {
-						dsmr_decoder.pkt->obis |= obis_map[j].key;
+						error("Failed to decode %s", obis_map[j].reference);
 					}
 				}
 			}
@@ -365,12 +260,23 @@ static int dsmr_process() {
 	return 0;
 }
 
-int obis_dec(double* out, char* in, char* unit) {
+int obis_decode_time(obis_object_t de, char* in) {
+	struct tm lt;
+	time_t t;
+	strptime(in, "(%y%m%d%H%M%SW)", &lt);
+	t = mktime(&lt);
+	de->type = TIME;
+	de->v.t = t;
+	return 0;
+}
+
+int obis_decode_double(obis_object_t de, char* in, char* unit) {
 	char arg1[256];
 	char arg2[256];
 	regex_t prg;
 	regmatch_t pmtch[3];
 	int rval;
+	double out;
 
 	regcomp(&prg, "^\\(([0-9.]*)\\*([^)]*)\\)$", REG_EXTENDED);
 	rval = regexec(&prg, in, sizeof(pmtch)/sizeof(pmtch[0]), pmtch, 0);
@@ -379,10 +285,14 @@ int obis_dec(double* out, char* in, char* unit) {
 	} else {
 		regsubstr(arg2, sizeof(arg2), in, pmtch, 2);
 		if (strcmp(arg2, unit) != 0) {
-			error("Ill unit");
+			error("Ill unit %s != %s", arg2, unit);
+			rval = -1;
 		} else {
 			regsubstr(arg1, sizeof(arg1), in, pmtch, 1);
-			sscanf(arg1, "%lf", out);
+			sscanf(arg1, "%lf", &out);
+			de->type = DOUBLE;
+			de->v.f.d = out;
+			strcpy(de->v.f.s, arg2);
 		}
 	}
 	regfree(&prg);
@@ -390,11 +300,12 @@ int obis_dec(double* out, char* in, char* unit) {
 	return rval;
 }
 
-int obis_decint(int* out, char* in) {
+int obis_decode_integer(obis_object_t de, char* in) {
 	char arg1[256];
 	regex_t prg;
 	regmatch_t pmtch[2];
 	int rval;
+	int out;
 
 	regcomp(&prg, "^\\(([0-9.]*)\\)$", REG_EXTENDED);
 	rval = regexec(&prg, in, sizeof(pmtch)/sizeof(pmtch[0]), pmtch, 0);
@@ -402,18 +313,21 @@ int obis_decint(int* out, char* in) {
 		error("Ill var");
 	} else {
 		regsubstr(arg1, sizeof(arg1), in, pmtch, 1);
-		sscanf(arg1, "%d", out);
+		sscanf(arg1, "%d", &out);
+		de->type = INTEGER;
+		de->v.i = out;
 	}
 	regfree(&prg);
 
 	return rval;
 }
 
-int obis_hexdec(char* out, char* in) {
+int obis_decode_string(obis_object_t de, char* in) {
 	char arg1[256];
 	regex_t prg;
 	regmatch_t pmtch[2];
 	int rval;
+	char out[256];
 
 	regcomp(&prg, "^\\(([^)]*)\\)$", REG_EXTENDED);
 	rval = regexec(&prg, in, sizeof(pmtch)/sizeof(pmtch[0]), pmtch, 0);
@@ -423,19 +337,23 @@ int obis_hexdec(char* out, char* in) {
 		regsubstr(arg1, sizeof(arg1), in, pmtch, 1);
 		hexdec(out, arg1);
 		out[strlen(arg1)/2] = '\0';
+		de->type = STRING;
+		strcpy(de->v.s, out);
 	}
 	regfree(&prg);
 
 	return rval;
 }
 
-int obis_5mindec(time_t* out1, double* out2, char* in, char* unit) {
+int obis_decode_5min(obis_object_t de, char* in, char* unit) {
     char arg1[256];
     char arg2[256];
     char arg3[256];
     regex_t prg;
     regmatch_t pmtch[4];
     int rval;
+	time_t out1;
+	double out2;
 
     regcomp(&prg, "^\\(([0-9]*)([A-Z]?)\\)\\(([^)]*)\\*([^)]*)\\)$", REG_EXTENDED);
     rval = regexec(&prg, in, sizeof(pmtch)/sizeof(pmtch[0]), pmtch, 0);
@@ -447,13 +365,30 @@ int obis_5mindec(time_t* out1, double* out2, char* in, char* unit) {
 		regsubstr(arg2, sizeof(arg2), in, pmtch, 2);
 		regsubstr(arg3, sizeof(arg3), in, pmtch, 3);
 		strptime(arg1, "%y%m%d%H%M%S", &lt);
-		*out1 = mktime(&lt);
-		sscanf(arg3, "%lf", out2);
+		out1 = mktime(&lt);
+		sscanf(arg3, "%lf", &out2);
+		de->type = MIN5;
+		de->v.m.t = out1;
+		de->v.m.d = out2;
 	}
-    regfree(&prg);
+	regfree(&prg);
 
-    return rval;
+	return rval;
 }
+
+int less_then(void* a, void* b) {
+	return strcmp(a, b) < 0;
+}
+
+int equals(void* a, void* b) {
+	return strcmp(a, b) == 0;
+}
+
+void free_key(void* a) {
+	free(a);
+}
+
+void free_value(void* a) { }
 
 int dsmr_init(int (callback)(dsmr_t), dsmr_t pkt) {
 	int j;
@@ -464,6 +399,8 @@ int dsmr_init(int (callback)(dsmr_t), dsmr_t pkt) {
 	if (j != 0) {
 		error("Ncompile");
 	}
+
+	dsmr_decoder.pkt->objects = rbtree_init(less_then, equals, free_key, free_value);
 
 	//regfree(&dsmr_decoder.preg);
 	return 0;
@@ -628,6 +565,7 @@ int dsmr_decode(char* buf, ssize_t len) {
 	return 0;
 }
 
+/*
 int dsmr_print(dsmr_t dsmr) {
 	printf("-----------------------------\n");
 	printf("%32s: 0x%09llx\n", "bitmask", dsmr->obis);
@@ -689,4 +627,5 @@ int dsmr_print(dsmr_t dsmr) {
 
 	return 0;
 }
+*/
 

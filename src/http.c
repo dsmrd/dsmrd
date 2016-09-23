@@ -31,6 +31,7 @@
 #include <regex.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "logging.h"
@@ -57,14 +58,20 @@ typedef enum {
 	HANDLE_REQUEST
 } http_decoder_action_t;
 
+typedef struct http_server_vars_struct_t* http_server_vars_t;
+
+struct http_server_vars_struct_t {
+	char request_method[32];
+	char request_uri[256];
+};
+
 typedef struct struct_http_decoder_t* http_decoder_t;
 
 struct struct_http_decoder_t {
 	int len;
 	int startline;
 	http_decoder_state_t state;
-	char request_method[32];
-	char request_uri[256];
+	struct http_server_vars_struct_t server;
 	int http_content_length;
 	int dataread;
 	char buf[4096];
@@ -78,9 +85,41 @@ struct struct_handler_t {
 	int fd;
 	struct sockaddr_in addr;
 	http_decoder_t decoder;
+	rbtree_t resources;
 	dsmr_t dsmr;
 	dispatch_t dis;
 };
+
+struct resource_info {
+	int (*callback)(handler_t inst, http_server_vars_t server, void* data);
+	void* data;
+};
+
+typedef enum {
+	HTTP_RESPONSE_CODE_OK                    = 200,
+	HTTP_RESPONSE_CODE_CREATED               = 201,
+	HTTP_RESPONSE_CODE_BAD_REQUEST           = 400,
+	HTTP_RESPONSE_CODE_UNAUTHORIZED          = 401,
+	HTTP_RESPONSE_CODE_NOT_FOUND             = 404,
+	HTTP_RESPONSE_CODE_METHOD_NOT_ALLOWED    = 405,
+	HTTP_RESPONSE_CODE_CONFLICT              = 409,
+	HTTP_RESPONSE_CODE_INTERNAL_SERVER_ERROR = 500,
+} http_response_code_t;
+
+struct {
+	http_response_code_t code;
+	char* name;
+} http_status_codes[] = {
+	{ HTTP_RESPONSE_CODE_OK,                    "OK"                    },
+	{ HTTP_RESPONSE_CODE_CREATED,               "Created"               },
+	{ HTTP_RESPONSE_CODE_BAD_REQUEST,           "Bad Request"           },
+	{ HTTP_RESPONSE_CODE_UNAUTHORIZED,          "Unauthorized"          },
+	{ HTTP_RESPONSE_CODE_NOT_FOUND,             "Not Found"             },
+	{ HTTP_RESPONSE_CODE_METHOD_NOT_ALLOWED,    "Method Not Allowed"    },
+	{ HTTP_RESPONSE_CODE_CONFLICT,              "Conflict"              },
+	{ HTTP_RESPONSE_CODE_INTERNAL_SERVER_ERROR, "Internal Server Error" },
+};
+
 
 int handler_read(void*);
 
@@ -194,11 +233,11 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len) {
 					if (j != 0) {
 						error("regexec");
 					} else {
-						(void) regsubstr(inst->request_method, sizeof(inst->request_method), inst->buf, pmatch, 1);
-						(void) regsubstr(inst->request_uri, sizeof(inst->request_uri), inst->buf, pmatch, 2);
+						(void) regsubstr(inst->server.request_method, sizeof(inst->server.request_method), inst->buf, pmatch, 1);
+						(void) regsubstr(inst->server.request_uri, sizeof(inst->server.request_uri), inst->buf, pmatch, 2);
 
-						debug("METHOD='%s'", inst->request_method);
-						debug("RESOURCE='%s'", inst->request_uri);
+						debug("METHOD='%s'", inst->server.request_method);
+						debug("RESOURCE='%s'", inst->server.request_uri);
 					}
 				}
 				break;
@@ -235,7 +274,42 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len) {
 	return 0;
 }
 
-static int http_response_index(handler_t inst, /*@unused@*/ char* method, /*@unused@*/ char* uri) {
+static int http_write_response(handler_t inst, int status, char* content) {
+	char buf[256];
+	int rval;
+	unsigned int content_length = 0;
+	char* cont = "";
+	char* ename = "Unknown";
+	int i = 0;
+
+	while (i < sizeof(http_status_codes)/sizeof(http_status_codes[0])) {
+		if (http_status_codes[i].code == status) {
+			ename = http_status_codes[i].name;
+			break;
+		}
+		i++;
+	}
+
+	if (content != NULL) {
+		content_length = strlen(content);
+		cont = content;
+	}
+
+	(void) snprintf(buf, sizeof(buf),
+			"HTTP/1.1 %d %s\r\n"
+			"Content-Type: application/javascript\r\n"
+			"Content-Length: %u\r\n\r\n%s",
+			status, ename,
+			content_length, cont);
+	rval = write(inst->fd, buf, strlen(buf));
+	if (rval < 0) {
+		error("Cannot write result");
+	}
+
+	return rval;
+}
+
+static int http_get_file(handler_t inst, http_server_vars_t server) {
 	char index[PATH_MAX];
 	char buf[1024];
 	int fd;
@@ -244,10 +318,10 @@ static int http_response_index(handler_t inst, /*@unused@*/ char* method, /*@unu
 	ssize_t sz;
 	struct stat st;
 
-	if (strcmp(uri, "/") == 0) {
+	if (strcmp(server->request_uri, "/") == 0) {
 		(void) snprintf(index, sizeof(index), "%s/%s", options.wwwdir, "index.html");
 	} else {
-		(void) snprintf(index, sizeof(index), "%s/%s", options.wwwdir, uri);
+		(void) snprintf(index, sizeof(index), "%s/%s", options.wwwdir, server->request_uri);
 	}
 
 	fd = open(index, O_RDONLY);
@@ -290,365 +364,137 @@ static int http_response_index(handler_t inst, /*@unused@*/ char* method, /*@unu
 	return rval;
 }
 
-static char* http_response_tariff1(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[16*2014];
-	double t;
-	char* arg0;
+static int http_get_obis(handler_t inst, http_server_vars_t method, void* data) {
+	static char buf[1024] = "x";
+	obis_object_t object;
 
-	va_start(ap, method);
-
-	arg0 = va_arg(ap, char*);
-
-	if (strcmp("/api/electricity/tariff1", arg0) == 0) {
-		t = inst->dsmr->electr_to_client_tariff1;
+	object = rbtree_get(inst->dsmr->objects, data);
+	if (object == NULL) {
+		snprintf(buf, sizeof(buf), "N/A '%s'", (char*)data);
 	} else {
-		t = inst->dsmr->electr_to_client_tariff2;
-	}
-	(void) snprintf(buf, sizeof(buf), "{ \"value\": %.3f, \"unit\": \"%s\" }", t, "kWh");
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_tariff_received(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-	double t;
-	char* arg0;
-
-	va_start(ap, method);
-
-	arg0 = va_arg(ap, char*);
-	//int arg1 = atoi(va_arg(ap, char*));
-
-	if (strcmp("/api/electricity/tariffs/1/received", arg0) == 0) {
-		t = inst->dsmr->electr_by_client_tariff1;
-	} else {
-		t = inst->dsmr->electr_by_client_tariff2;
-	}
-	(void) snprintf(buf, sizeof(buf), "%.3f", t);
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_tariff_delivered(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-	double t;
-	char* arg0;
-
-	va_start(ap, method);
-
-	arg0 = va_arg(ap, char*);
-	//int arg1 = atoi(va_arg(ap, char*));
-
-	if (strcmp("/api/electricity/tariffs/1/delivered", arg0) == 0) {
-		t = inst->dsmr->electr_to_client_tariff1;
-	} else {
-		t = inst->dsmr->electr_to_client_tariff2;
-	}
-	(void) snprintf(buf, sizeof(buf), "%.3f", t);
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_total_power_delivered(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-	double t;
-
-	va_start(ap, method);
-
-	t = inst->dsmr->electr_power_delivered;
-	(void) snprintf(buf, sizeof(buf), "%.3f", t);
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_total_power_received(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-	double t;
-
-	va_start(ap, method);
-
-	t = inst->dsmr->electr_power_received;
-	(void) snprintf(buf, sizeof(buf), "%.3f", t);
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_phase_power_received(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-	double t;
-	int arg1;
-
-	va_start(ap, method);
-
-	(void) va_arg(ap, char*);
-	arg1 = atoi(va_arg(ap, char*));
-
-	if (arg1 == 1) {
-		t = inst->dsmr->electr_inst_active_power_recv_l1;
-	} else if (arg1 == 2) {
-		t = inst->dsmr->electr_inst_active_power_recv_l2;
-	} else {
-		t = inst->dsmr->electr_inst_active_power_recv_l3;
-	}
-	(void) snprintf(buf, sizeof(buf), "%.3f", t);
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_phase_power_delivered(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-	double t;
-	int arg1;
-
-	va_start(ap, method);
-
-	(void) va_arg(ap, char*);
-	arg1 = atoi(va_arg(ap, char*));
-
-	if (arg1 == 1) {
-		t = inst->dsmr->electr_inst_active_power_delv_l1;
-	} else if (arg1 == 2) {
-		t = inst->dsmr->electr_inst_active_power_delv_l2;
-	} else {
-		t = inst->dsmr->electr_inst_active_power_delv_l3;
-	}
-	(void) snprintf(buf, sizeof(buf), "%.3f", t);
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_phase_current(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-	double t;
-	int arg1;
-
-	va_start(ap, method);
-
-	(void) va_arg(ap, char*);
-	arg1 = atoi(va_arg(ap, char*));
-
-	if (arg1 == 1) {
-		t = inst->dsmr->electr_inst_current_l1;
-	} else if (arg1 == 2) {
-		t = inst->dsmr->electr_inst_current_l2;
-	} else {
-		t = inst->dsmr->electr_inst_current_l3;
-	}
-	(void) snprintf(buf, sizeof(buf), "%.3f", t);
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_phase_voltage(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-	double t;
-	int arg1;
-
-	va_start(ap, method);
-
-	(void) va_arg(ap, char*);
-	arg1 = atoi(va_arg(ap, char*));
-
-	if (arg1 == 1) {
-		t = inst->dsmr->electr_inst_voltage_l1;
-	} else if (arg1 == 2) {
-		t = inst->dsmr->electr_inst_voltage_l2;
-	} else {
-		t = inst->dsmr->electr_inst_voltage_l3;
-	}
-	(void) snprintf(buf, sizeof(buf), "%.3f", t);
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_indicator(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-
-	va_start(ap, method);
-
-	//snprintf(buf, sizeof(buf), "%s", inst->dsmr->electr_tariff_indicator);
-	(void) snprintf(buf, sizeof(buf), "%d", inst->dsmr->electr_tariff_indicator);
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_equipment(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-
-	va_start(ap, method);
-
-	(void) snprintf(buf, sizeof(buf), "\"%s\"", inst->dsmr->equipment_identifier);
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_gas_equipment(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-
-	va_start(ap, method);
-
-	(void) snprintf(buf, sizeof(buf), "\"%s\"", inst->dsmr->device1_equipment_identifier);
-
-	va_end(ap);
-
-	return buf;
-}
-
-static char* http_response_gas_delivered(handler_t inst, char* method, ...) {
-	va_list ap;
-	static char buf[256];
-
-	va_start(ap, method);
-	(void) snprintf(buf, sizeof(buf), "%.3f", inst->dsmr->device1_last_5min_value);
-	va_end(ap);
-
-	return buf;
-}
-
-static int rest_inited = 0;
-struct {
-	char* resource;
-	regex_t regex;
-	struct {
-		char* method;
-		char* (*f)(handler_t inst, char* method, ...);
-	} xx[5];
-} rest[] = {
-	{ "/api/electricity/tariff[12]",           {}, { { "GET", http_response_tariff1 } } },
-	{ "/api/electricity/tariffs/indicator", {}, { { "GET", http_response_indicator } } },
-	{ "/api/electricity/tariffs/[12]/delivered", {}, { { "GET", http_response_tariff_delivered } } },
-	{ "/api/electricity/tariffs/[12]/received", {}, { { "GET", http_response_tariff_received } } },
-	{ "/api/electricity/phases/([123])/power_delivered", {}, { { "GET", http_response_phase_power_delivered } } },
-	{ "/api/electricity/phases/([123])/power_received", {}, { { "GET", http_response_phase_power_received } } },
-	{ "/api/electricity/phases/([123])/current", {}, { { "GET", http_response_phase_current } } },
-	{ "/api/electricity/phases/([123])/voltage", {}, { { "GET", http_response_phase_voltage } } },
-	{ "/api/electricity/power/delivered", {}, { { "GET", http_response_total_power_delivered } } },
-	{ "/api/electricity/power/received", {}, { { "GET", http_response_total_power_received } } },
-	{ "/api/electricity/equipment", {}, { { "GET", http_response_equipment } } },
-	{ "/api/gas/equipment", {}, { { "GET", http_response_gas_equipment } } },
-	{ "/api/gas/delivered", {}, { { "GET", http_response_gas_delivered } } },
-};
-
-static int http_response_rest(handler_t inst, http_decoder_t decoder) {
-	regmatch_t pmatch[5];
-	char buf[16*2014];
-	int i, j=0;
-	int rval;
-
-	for (i=0; i<sizeof(rest)/sizeof(rest[0]); i++) {
-		if (0 == regexec(&rest[i].regex, decoder->request_uri, 5, pmatch, 0)) {
-			for (j=0; j<sizeof(rest[i].xx)/sizeof(rest[0].xx[i]); j++) {
-				if (strcmp(rest[i].xx[j].method, decoder->request_method) == 0) {
-					break;
-				}
-			}
-			break;
+		switch (object->type) {
+			case DOUBLE:
+				(void) snprintf(buf, sizeof(buf), "%.3f", object->v.f.d);
+				break;
+			case INTEGER:
+				(void) snprintf(buf, sizeof(buf), "%i", object->v.i);
+				break;
+			case TIME:
+				(void) snprintf(buf, sizeof(buf), "%s", ctime(&(object->v.t)));
+				buf[strlen(buf)] = '\0';
+				break;
+			case MIN5:
+				(void) snprintf(buf, sizeof(buf), "{ %f, %s }", object->v.m.d, ctime(&(object->v.m.t)));
+				buf[strlen(buf)] = '\0';
+				break;
+			case STRING:
+				(void) snprintf(buf, sizeof(buf), "%s", object->v.s);
+				break;
+			default:
+				break;
 		}
 	}
 
-	if (i == sizeof(rest)/sizeof(rest[0])) {
-		debug("404 Not found");
-		(void) snprintf(buf, sizeof(buf), "HTTP/1.1 404 Not found\r\nContent-Length: 0\r\n\r\n");
-		rval = write(inst->fd, buf, strlen(buf));
-		if (rval < 0) {
-			error("Cannot write 404");
-		}
-	} else {
-		if (j == sizeof(rest[i].xx)/sizeof(rest[0].xx[i])) {
-			debug("405 Method Not Allowed");
-			(void) snprintf(buf, sizeof(buf), "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n");
-			rval = write(inst->fd, buf, strlen(buf));
-			if (rval < 0) {
-				error("Cannot write 405");
-			}
-		} else {
-			char buf[256];
-			char* b2;
-			char arg0[256];
-			char arg1[256];
-			char arg2[256];
-
-			(void) regsubstr(arg0, sizeof(arg0), decoder->request_uri, pmatch, 0);
-			(void) regsubstr(arg1, sizeof(arg1), decoder->request_uri, pmatch, 1);
-			(void) regsubstr(arg2, sizeof(arg2), decoder->request_uri, pmatch, 2);
-
-			b2 = rest[i].xx[j].f(inst, NULL /*decoder->request_uri*/, arg0, arg1, arg2);
-
-			(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nContent-Length: %lu\r\n\r\n%s", (long unsigned int) strlen(b2), b2);
-			rval = write(inst->fd, buf, strlen(buf));
-			if (rval < 0) {
-				error("Cannot write result");
-			}
-		}
-	}
-
-	return rval;
+	return http_write_response(inst, 200, buf);
 }
+
 
 static int handler_callback(void* data, http_decoder_t decoder) {
 	handler_t inst = (handler_t) data;
 	int rval = 0;
+	rbtree_t resource;
+	struct resource_info* rinfo;
 
-	info("Served %s %s", decoder->request_method, decoder->request_uri);
+	debug("Served %s %s", decoder->server.request_method, decoder->server.request_uri);
 
-	if (strncmp("/api", decoder->request_uri, 4) != 0) {
-		rval = http_response_index(inst, decoder->request_method, decoder->request_uri);
+	resource = rbtree_get(inst->resources, decoder->server.request_uri);
+	if (resource == NULL) {
+		rval = http_get_file(inst, &decoder->server);
 	} else {
-		rval = http_response_rest(inst, decoder);
+		rinfo = (struct resource_info*) rbtree_get(resource, decoder->server.request_method);
+		if (rinfo == NULL) {
+			rval = http_write_response(inst, HTTP_RESPONSE_CODE_METHOD_NOT_ALLOWED, "Method Not Allowed");
+		} else {
+			rval = rinfo->callback(inst, &decoder->server, rinfo->data);
+		}
 	}
 
 	return rval;
 }
 
+int string_less_then(void* a, void* b) { return strcmp(a, b) < 0; }
+int string_equals(void* a, void* b) { return strcmp(a,b) == 0; }
+void string_free(void* a) { free(a); }
+void rbtree_free(void* a) { rbtree_exit(a); }
+void resource_free(void* a) { free(a); }
+
+void handler_register_resource(handler_t inst, char* resource, char* method,
+		int (*cb)(handler_t inst, http_server_vars_t server, void* data), void* data) {
+	rbtree_t m;
+	struct resource_info* info;
+
+	m = rbtree_get(inst->resources, resource);
+	if (m == NULL) {
+		m = rbtree_init(string_less_then, string_equals, string_free, resource_free);
+		rbtree_put(inst->resources, resource, m);
+	}
+	info = malloc(sizeof(struct resource_info));
+	info->callback = cb;
+	info->data = data;
+	rbtree_put(m, method, info);
+}
+
+void rest_init(handler_t inst) {
+	handler_register_resource(inst, "/api/electricity/tariff1",                  "GET", http_get_obis, "1-0:1.8.1");
+	handler_register_resource(inst, "/api/electricity/tariff2",                  "GET", http_get_obis, "1-0:1.8.2");
+	handler_register_resource(inst, "/api/electricity/tariffs/indicator",        "GET", http_get_obis, "0-0:96.14.0");
+	handler_register_resource(inst, "/api/electricity/tariffs/1/delivered",      "GET", http_get_obis, "1-0:1.8.1");
+	handler_register_resource(inst, "/api/electricity/tariffs/2/delivered",      "GET", http_get_obis, "1-0:1.8.2");
+	handler_register_resource(inst, "/api/electricity/tariffs/1/received",       "GET", http_get_obis, "1-0:2.8.1");
+	handler_register_resource(inst, "/api/electricity/tariffs/2/received",       "GET", http_get_obis, "1-0:2.8.2");
+	handler_register_resource(inst, "/api/electricity/phases/1/power_delivered", "GET", http_get_obis, "1-0:21.7.0");
+	handler_register_resource(inst, "/api/electricity/phases/2/power_delivered", "GET", http_get_obis, "1-0:41.7.0");
+	handler_register_resource(inst, "/api/electricity/phases/3/power_delivered", "GET", http_get_obis, "1-0:61.7.0");
+	handler_register_resource(inst, "/api/electricity/phases/1/power_received",  "GET", http_get_obis, "1-0:22.7.0");
+	handler_register_resource(inst, "/api/electricity/phases/2/power_received",  "GET", http_get_obis, "1-0:42.7.0");
+	handler_register_resource(inst, "/api/electricity/phases/3/power_received",  "GET", http_get_obis, "1-0:62.7.0");
+	handler_register_resource(inst, "/api/electricity/phases/1/current",         "GET", http_get_obis, "1-0:31.7.0");
+	handler_register_resource(inst, "/api/electricity/phases/2/current",         "GET", http_get_obis, "1-0:51.7.0");
+	handler_register_resource(inst, "/api/electricity/phases/3/current",         "GET", http_get_obis, "1-0:71.7.0");
+	handler_register_resource(inst, "/api/electricity/phases/1/voltage",         "GET", http_get_obis, "1-0:32.7.0");
+	handler_register_resource(inst, "/api/electricity/phases/2/voltage",         "GET", http_get_obis, "1-0:52.7.0");
+	handler_register_resource(inst, "/api/electricity/phases/3/voltage",         "GET", http_get_obis, "1-0:72.7.0");
+	handler_register_resource(inst, "/api/electricity/power/delivered",          "GET", http_get_obis, "1-0:1.7.0");
+	handler_register_resource(inst, "/api/electricity/power/received",           "GET", http_get_obis, "1-0:2.7.0");
+	handler_register_resource(inst, "/api/electricity/equipment",                "GET", http_get_obis, "0-0:96.1.1");
+	handler_register_resource(inst, "/api/gas/equipment",                        "GET", http_get_obis, "");
+	handler_register_resource(inst, "/api/gas/delivered",                        "GET", http_get_obis, "");
+    //{ "/api/version", "1-3:0.2.8" },
+    //{ "/api/datetimestamp", "0-0:1.0.0" },
+    //{ "/api/nof_power_failures", "0-0:96.7.21" },
+    //{ "/api/nof_long_power_failures", "0-0:96.7.9" },
+    //{ "/api/power_fail_event_log", "1-0:99.97.0" },
+    //{ "/api/nof_voltage_sage_l1", "1-0:32.32.0" },
+    //{ "/api/nof_voltage_sage_l2", "1-0:52.32.0" },
+    //{ "/api/nof_voltage_sage_l3", "1-0:72.32.0" },
+    //{ "/api/nof_voltage_swells_l1", "1-0:32.36.0" },
+    //{ "/api/nof_voltage_swells_l2", "1-0:52.36.0" },
+    //{ "/api/nof_voltage_swells_l3", "1-0:72.36.0" },
+    //{ "/api/text_message0", "0-0:96.13.0" },
+    //{ "/api/text_message1", "0-0:96.13.1" },
+}
+
 handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) {
 	handler_t inst;
-	int i;
 
 	inst = (handler_t) calloc(sizeof(struct struct_handler_t), 1);
 	inst->fd = newsockfd;
 	inst->addr = cli_addr;
 	inst->dsmr = dsmr;
 
-	if (!rest_inited) {
-		for (i=0; i<sizeof(rest)/sizeof(rest[0]); i++) {
-			(void) regcomp(&rest[i].regex, rest[i].resource, REG_EXTENDED);
-		}
-		rest_inited = 1;
-	}
+	inst->resources = rbtree_init(string_less_then, string_equals, string_free, rbtree_free);
+
+	rest_init(inst);
 
 	debug("Handler init");
 
@@ -690,6 +536,7 @@ int handler_close(void* data) {
 
 	close(hdlr->fd);
 
+	rbtree_exit(hdlr->resources);
 	free(hdlr);
 
 	debug("Handler close");

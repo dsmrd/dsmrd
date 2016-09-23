@@ -3,51 +3,27 @@
 <head>
 <meta name="generator" content=
 "HTML Tidy for Linux (vers 25 March 2009), see www.w3.org">
+  <title>DSMRd</title>
+  <link rel="stylesheet" href="jquery-ui.min.css" />
 <script src="jquery.min.js" type="text/javascript">
 </script>
 <script src="main.js" type="text/javascript">
 </script>
-<title></title>
+
+  <script src="jquery-ui.min.js"></script>
+  <script>
+  $( function() {
+    $( "#accordion" ).accordion();
+  } );
+  </script>
 </head>
 <body>
-<table id="idd" summary="X">
-<tr>
-<td>
-<h1>DSMRd</h1>
-</td>
-</tr>
-<tr>
-<td><!--fieldset>
-<legend>Meters</legend>
-<table>
-<tr id="m1">
-<th>I</th>
-<td class="nonfract" id="t10"/>
-<td class="nonfract" id="t11"/>
-<td class="nonfract" id="t12"/>
-<td class="nonfract" id="t13"/>
-<td class="nonfract" id="t14"/>
-<td class="nonfract" id="t15"/>
-<td class="fract" id="t16"/>
-<td class="fract" id="t17"/>
-<td class="fract" id="t18"/>
-<td>kWh</td>
-</tr>
-<tr id="m2">
-<th>II</th>
-<td class="nonfract" id="t20"/>
-<td class="nonfract" id="t21"/>
-<td class="nonfract" id="t22"/>
-<td class="nonfract" id="t23"/>
-<td class="nonfract" id="t24"/>
-<td class="nonfract" id="t25"/>
-<td class="fract" id="t26"/>
-<td class="fract" id="t27"/>
-<td class="fract" id="t28"/>
-<td>kWh</td>
-</tr>
-</table>
-</fieldset-->
+
+<div id="accordion">
+  <h3>Electricity</h3>
+  <div>
+    <p>
+
 <fieldset><legend>Equipment</legend>
 <table summary="">
 <tr>
@@ -60,6 +36,7 @@
 </tr>
 </table>
 </fieldset>
+
 <fieldset><legend>Meters</legend>
 <table summary="">
 <tr>
@@ -78,18 +55,12 @@
 <td id="recv2"></td>
 </tr>
 <tr>
-<th>Dev1</th>
-<td id="device1_delivered"></td>
-<td id="recv3">N/A</td>
 </tr>
 </table>
 </fieldset>
-</td>
-</tr>
-<tr>
-<td>
+
 <fieldset><legend>Instantaneous power</legend>
-<table width="100%" summary="">
+<table summary="">
 <tr>
 <th>Delivered [kW]</th>
 <td>
@@ -104,12 +75,9 @@
 </tr>
 </table>
 </fieldset>
-</td>
-</tr>
-<tr>
-<td>
+
 <fieldset><legend>Per phase</legend>
-<table width="100%" summary="">
+<table summary="">
 <tr>
 <th></th>
 <th>L1</th>
@@ -142,9 +110,55 @@
 </tr>
 </table>
 </fieldset>
-</td>
-</tr>
+
+  </div>
+  <h3>Device #1</h3>
+  <div>
+    <p>
+
+<table>
+<tr><th>Type:</th><td><span id="devices_1_type">-</span></td></tr>
+<tr><th>Equipment:</th><td><span id="devices_1_equipment">-</span></td></tr>
+<tr><th>Delivered:</th><td><span id="devices_1_delivered">-</span></td></tr>
 </table>
+
+    </p>
+  </div>
+
+  <h3>Device #2</h3>
+  <div>
+  <p>
+<table>
+<tr><th>Type:</th><td><span id="devices_2_type">-</span></td></tr>
+<tr><th>Equipment:</th><td><span id="devices_2_equipment">-</span></td></tr>
+<tr><th>Delivered:</th><td><span id="devices_2_delivered">-</span></td></tr>
+</table>
+  </p>
+  </div>
+
+  <h3>Device #3</h3>
+  <div>
+  <p>
+<table>
+<tr><th>Type:</th><td><span id="devices_3_type">-</span></td></tr>
+<tr><th>Equipment:</th><td><span id="devices_3_equipment">-</span></td></tr>
+<tr><th>Delivered:</th><td><span id="devices_3_delivered">-</span></td></tr>
+</table>
+  </p>
+  </div>
+
+  <h3>Device #4</h3>
+  <div>
+  <p>
+<table>
+<tr><th>Type:</th><td><span id="devices_4_type">-</span></td>
+<tr><th>Equipment:</th><td><span id="devices_4_equipment">-</span></td>
+<tr><th>Delivered:</th><td><span id="devices_4_delivered">-</span></td>
+</table>
+  </p>
+  </div>
+</div>
+
 <div class="footer">&copy;2016 M.J. de Wit (<a href=
 "mailto:info@dsmrd.org">info@dsmrd.org</a>)</div>
 </body>

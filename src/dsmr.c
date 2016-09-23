@@ -107,6 +107,7 @@ typedef enum {
 	OBIS_TYPE_TIME,
 	OBIS_TYPE_5MIN,
 	OBIS_TYPE_STRING,
+	OBIS_TYPE_LSTRING,
 } obis_type_t;
 
 struct obis_map_t {
@@ -114,7 +115,7 @@ struct obis_map_t {
 	obis_type_t type;
 	char* unit;
 } obis_map[] = {
-	{ OBIS_VERSION, OBIS_TYPE_STRING, NULL },
+	{ OBIS_VERSION, OBIS_TYPE_LSTRING, NULL },
 	{ OBIS_DATETIME_STAMP, OBIS_TYPE_TIME, NULL },
 	{ OBIS_EQUIPMENT_IDENTIFIER, OBIS_TYPE_STRING, NULL },
 	{ OBIS_ELECTR_TO_CLIENT_TARIFF1, OBIS_TYPE_DOUBLE, "kWh" },
@@ -175,7 +176,7 @@ static int dsmr_process() {
 	if ((!options.ignore_crc) && (strlen(dsmr_decoder.crcbuffer) > 0) && (dsmr_decoder.crc != crc)) {
 		error("Dropped record, CRC mismatch (calc:%04x != msg:%04x)", dsmr_decoder.crc, crc);
 	} else {
-		for (i = 1; i < dsmr_decoder.row; i++) {
+		for (i = 0; i < dsmr_decoder.row; i++) {
 			regmatch_t pmatch[15];
 			int rval;
 			//debug("%d: %s", i, dsmr_decoder.buffer[i]);
@@ -225,6 +226,11 @@ static int dsmr_process() {
 							break;
 						case OBIS_TYPE_STRING:
 							rval = obis_decode_string(de, obis_value);
+							break;
+						case OBIS_TYPE_LSTRING:
+							strncpy(de->v.s, obis_value, sizeof(de->v.s));
+							de->type = STRING;
+							rval = 0;
 							break;
 						case OBIS_TYPE_NULL:
 							break;

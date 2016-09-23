@@ -10,12 +10,46 @@ $(document).ready(function() {
 		$.getJSON('api/electricity/equipment', function(result){
 			$('#equipment').html(result);
 			}).fail(function() { $('#equipment').html('N/A'); });
-		$.getJSON('api/gas/equipment', function(result){
-			$('#device1_equipment').html(result);
-			}).fail(function() { $('#device1_equipment').html('N/A'); });
-		$.getJSON('api/gas/delivered', function(result){
-			$('#device1_delivered').html(pad(result, 9, 3));
-			}).fail(function() { $('#device1_delivered').html('N/A'); });
+
+		$.getJSON('api/devices/1/type', function(result){
+			$('#device_1_type').html(result);
+			}).fail(function() { $('#device_1_type').html('N/A'); });
+		$.getJSON('api/devices/1/equipment', function(result){
+			$('#device_1_equipment').html(result);
+			}).fail(function() { $('#device_1_equipment').html('N/A'); });
+		$.getJSON('api/devices/1/delivered', function(result){
+			$('#device_1_delivered').html(result);
+			}).fail(function() { $('#device_1_delivered').html('N/A'); });
+
+		$.getJSON('api/devices/2/type', function(result){
+			$('#device_2_type').html(result);
+			}).fail(function() { $('#device_2_type').html('N/A'); });
+		$.getJSON('api/devices/2/equipment', function(result){
+			$('#device_2_equipment').html(result);
+			}).fail(function() { $('#device_2_equipment').html('N/A'); });
+		$.getJSON('api/devices/2/delivered', function(result){
+			$('#device_2_delivered').html(result);
+			}).fail(function() { $('#device_2_delivered').html('N/A'); });
+
+		$.getJSON('api/devices/3/type', function(result){
+			$('#device_3_type').html(result);
+			}).fail(function() { $('#device_3_type').html('N/A'); });
+		$.getJSON('api/devices/3/equipment', function(result){
+			$('#device_3_equipment').html(result);
+			}).fail(function() { $('#device_3_equipment').html('N/A'); });
+		$.getJSON('api/devices/3/delivered', function(result){
+			$('#device_3_delivered').html(result);
+			}).fail(function() { $('#device_3_delivered').html('N/A'); });
+
+		$.getJSON('api/devices/4/type', function(result){
+			$('#device_4_type').html(result);
+			}).fail(function() { $('#device_4_type').html('N/A'); });
+		$.getJSON('api/devices/4/equipment', function(result){
+			$('#device_4_equipment').html(result);
+			}).fail(function() { $('#device_4_equipment').html('N/A'); });
+		$.getJSON('api/devices/4/delivered', function(result){
+			$('#device_4_delivered').html(result);
+			}).fail(function() { $('#device_4_delivered').html('N/A'); });
 
 		$.getJSON('api/electricity/power/received', function(result){
 			$('#total_recv_power').show().html(pad(result, 9, 3));

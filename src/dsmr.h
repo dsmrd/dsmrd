@@ -20,6 +20,8 @@
 #ifndef _DSMR_H
 #define _DSMR_H
 
+#include <stdlib.h>
+#include <time.h>
 #include "rbtree.h"
 
 typedef struct obis_object_struct_t* obis_object_t;

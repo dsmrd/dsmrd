@@ -41,6 +41,7 @@
 #include "http.h"
 #include "options.h"
 #include "util.h"
+#include "rest.h"
 
 
 typedef enum {
@@ -57,13 +58,6 @@ typedef enum {
 	PARSE_HEADER,
 	HANDLE_REQUEST
 } http_decoder_action_t;
-
-typedef struct http_server_vars_struct_t* http_server_vars_t;
-
-struct http_server_vars_struct_t {
-	char request_method[32];
-	char request_uri[256];
-};
 
 typedef struct struct_http_decoder_t* http_decoder_t;
 
@@ -86,12 +80,14 @@ struct struct_handler_t {
 	struct sockaddr_in addr;
 	http_decoder_t decoder;
 	rbtree_t resources;
+	int (*default_callback)();
+	void* default_callback_data;
 	dsmr_t dsmr;
 	dispatch_t dis;
 };
 
 struct resource_info {
-	int (*callback)(handler_t inst, http_server_vars_t server, void* data);
+	int (*callback)(handler_t inst, http_server_vars_t server, void* data, dsmr_t dsmr);
 	void* data;
 };
 
@@ -274,7 +270,7 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len) {
 	return 0;
 }
 
-static int http_write_response(handler_t inst, int status, char* content) {
+int http_write_response(handler_t inst, int status, char* content) {
 	char buf[256];
 	int rval;
 	unsigned int content_length = 0;
@@ -309,96 +305,6 @@ static int http_write_response(handler_t inst, int status, char* content) {
 	return rval;
 }
 
-static int http_get_file(handler_t inst, http_server_vars_t server) {
-	char index[PATH_MAX];
-	char buf[1024];
-	int fd;
-	int rval = 0;
-	long content_length;
-	ssize_t sz;
-	struct stat st;
-
-	if (strcmp(server->request_uri, "/") == 0) {
-		(void) snprintf(index, sizeof(index), "%s/%s", options.wwwdir, "index.html");
-	} else {
-		(void) snprintf(index, sizeof(index), "%s/%s", options.wwwdir, server->request_uri);
-	}
-
-	fd = open(index, O_RDONLY);
-	if (fd < 0) {
-		error("Open error '%s'", index);
-
-		(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
-		sz = write(inst->fd, buf, strlen(buf));
-		if (sz < 0) {
-			error("Cannot write header");
-		}
-	} else {
-		rval = fstat(fd, &st);
-		if (rval != 0) {
-			error("Cannot stat file");
-		} else {
-			content_length = st.st_size;
-
-			(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n", content_length);
-			sz = write(inst->fd, buf, strlen(buf));
-			if (sz < 0) {
-				error("Cannot write header");
-			}
-
-			while (sz > 0) {
-				sz = read(fd, buf, sizeof(buf));
-				if (sz < 0) {
-					error("Read error");
-				} else {
-					sz = write(inst->fd, buf, sz);
-					if (sz < 0) {
-						error("Cannot write result");
-					}
-				}
-			}
-		}
-	}
-	(void) close(fd);
-
-	return rval;
-}
-
-static int http_get_obis(handler_t inst, http_server_vars_t method, void* data) {
-	static char buf[1024] = "x";
-	obis_object_t object;
-
-	object = rbtree_get(inst->dsmr->objects, data);
-	if (object == NULL) {
-		snprintf(buf, sizeof(buf), "N/A '%s'", (char*)data);
-	} else {
-		switch (object->type) {
-			case DOUBLE:
-				(void) snprintf(buf, sizeof(buf), "%.3f", object->v.f.d);
-				break;
-			case INTEGER:
-				(void) snprintf(buf, sizeof(buf), "%i", object->v.i);
-				break;
-			case TIME:
-				(void) snprintf(buf, sizeof(buf), "%s", ctime(&(object->v.t)));
-				buf[strlen(buf)] = '\0';
-				break;
-			case MIN5:
-				(void) snprintf(buf, sizeof(buf), "{ %f, %s }", object->v.m.d, ctime(&(object->v.m.t)));
-				buf[strlen(buf)] = '\0';
-				break;
-			case STRING:
-				(void) snprintf(buf, sizeof(buf), "%s", object->v.s);
-				break;
-			default:
-				break;
-		}
-	}
-
-	return http_write_response(inst, 200, buf);
-}
-
-
 static int handler_callback(void* data, http_decoder_t decoder) {
 	handler_t inst = (handler_t) data;
 	int rval = 0;
@@ -409,13 +315,13 @@ static int handler_callback(void* data, http_decoder_t decoder) {
 
 	resource = rbtree_get(inst->resources, decoder->server.request_uri);
 	if (resource == NULL) {
-		rval = http_get_file(inst, &decoder->server);
+		rval = inst->default_callback(inst, &decoder->server, inst->default_callback_data);
 	} else {
 		rinfo = (struct resource_info*) rbtree_get(resource, decoder->server.request_method);
 		if (rinfo == NULL) {
 			rval = http_write_response(inst, HTTP_RESPONSE_CODE_METHOD_NOT_ALLOWED, "Method Not Allowed");
 		} else {
-			rval = rinfo->callback(inst, &decoder->server, rinfo->data);
+			rval = rinfo->callback(inst, &decoder->server, rinfo->data, inst->dsmr);
 		}
 	}
 
@@ -429,7 +335,7 @@ void rbtree_free(void* a) { rbtree_exit(a); }
 void resource_free(void* a) { free(a); }
 
 void handler_register_resource(handler_t inst, char* resource, char* method,
-		int (*cb)(handler_t inst, http_server_vars_t server, void* data), void* data) {
+		int (*cb)(handler_t inst, http_server_vars_t server, void* data, dsmr_t dsmr), void* data) {
 	rbtree_t m;
 	struct resource_info* info;
 
@@ -444,44 +350,10 @@ void handler_register_resource(handler_t inst, char* resource, char* method,
 	rbtree_put(m, method, info);
 }
 
-void rest_init(handler_t inst) {
-	handler_register_resource(inst, "/api/electricity/tariff1",                  "GET", http_get_obis, "1-0:1.8.1");
-	handler_register_resource(inst, "/api/electricity/tariff2",                  "GET", http_get_obis, "1-0:1.8.2");
-	handler_register_resource(inst, "/api/electricity/tariffs/indicator",        "GET", http_get_obis, "0-0:96.14.0");
-	handler_register_resource(inst, "/api/electricity/tariffs/1/delivered",      "GET", http_get_obis, "1-0:1.8.1");
-	handler_register_resource(inst, "/api/electricity/tariffs/2/delivered",      "GET", http_get_obis, "1-0:1.8.2");
-	handler_register_resource(inst, "/api/electricity/tariffs/1/received",       "GET", http_get_obis, "1-0:2.8.1");
-	handler_register_resource(inst, "/api/electricity/tariffs/2/received",       "GET", http_get_obis, "1-0:2.8.2");
-	handler_register_resource(inst, "/api/electricity/phases/1/power_delivered", "GET", http_get_obis, "1-0:21.7.0");
-	handler_register_resource(inst, "/api/electricity/phases/2/power_delivered", "GET", http_get_obis, "1-0:41.7.0");
-	handler_register_resource(inst, "/api/electricity/phases/3/power_delivered", "GET", http_get_obis, "1-0:61.7.0");
-	handler_register_resource(inst, "/api/electricity/phases/1/power_received",  "GET", http_get_obis, "1-0:22.7.0");
-	handler_register_resource(inst, "/api/electricity/phases/2/power_received",  "GET", http_get_obis, "1-0:42.7.0");
-	handler_register_resource(inst, "/api/electricity/phases/3/power_received",  "GET", http_get_obis, "1-0:62.7.0");
-	handler_register_resource(inst, "/api/electricity/phases/1/current",         "GET", http_get_obis, "1-0:31.7.0");
-	handler_register_resource(inst, "/api/electricity/phases/2/current",         "GET", http_get_obis, "1-0:51.7.0");
-	handler_register_resource(inst, "/api/electricity/phases/3/current",         "GET", http_get_obis, "1-0:71.7.0");
-	handler_register_resource(inst, "/api/electricity/phases/1/voltage",         "GET", http_get_obis, "1-0:32.7.0");
-	handler_register_resource(inst, "/api/electricity/phases/2/voltage",         "GET", http_get_obis, "1-0:52.7.0");
-	handler_register_resource(inst, "/api/electricity/phases/3/voltage",         "GET", http_get_obis, "1-0:72.7.0");
-	handler_register_resource(inst, "/api/electricity/power/delivered",          "GET", http_get_obis, "1-0:1.7.0");
-	handler_register_resource(inst, "/api/electricity/power/received",           "GET", http_get_obis, "1-0:2.7.0");
-	handler_register_resource(inst, "/api/electricity/equipment",                "GET", http_get_obis, "0-0:96.1.1");
-	handler_register_resource(inst, "/api/gas/equipment",                        "GET", http_get_obis, "");
-	handler_register_resource(inst, "/api/gas/delivered",                        "GET", http_get_obis, "");
-    //{ "/api/version", "1-3:0.2.8" },
-    //{ "/api/datetimestamp", "0-0:1.0.0" },
-    //{ "/api/nof_power_failures", "0-0:96.7.21" },
-    //{ "/api/nof_long_power_failures", "0-0:96.7.9" },
-    //{ "/api/power_fail_event_log", "1-0:99.97.0" },
-    //{ "/api/nof_voltage_sage_l1", "1-0:32.32.0" },
-    //{ "/api/nof_voltage_sage_l2", "1-0:52.32.0" },
-    //{ "/api/nof_voltage_sage_l3", "1-0:72.32.0" },
-    //{ "/api/nof_voltage_swells_l1", "1-0:32.36.0" },
-    //{ "/api/nof_voltage_swells_l2", "1-0:52.36.0" },
-    //{ "/api/nof_voltage_swells_l3", "1-0:72.36.0" },
-    //{ "/api/text_message0", "0-0:96.13.0" },
-    //{ "/api/text_message1", "0-0:96.13.1" },
+void handler_register_default(handler_t inst,
+		int (*cb)(handler_t inst, http_server_vars_t server, void* data), void* data) {
+	inst->default_callback = cb;
+	inst->default_callback_data = data;
 }
 
 handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) {
@@ -542,5 +414,9 @@ int handler_close(void* data) {
 	debug("Handler close");
 
 	return 0;
+}
+
+int handler_get_fd(handler_t inst) {
+	return inst->fd;
 }
 

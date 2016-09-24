@@ -20,6 +20,9 @@
 #ifndef LOGGING_H
 #define LOGGING_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <syslog.h>
 
 int logging_init(int to_syslog, int verbose, char* ident, int facility);

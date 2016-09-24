@@ -20,6 +20,9 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include "dispatch.h"
 
 typedef enum {

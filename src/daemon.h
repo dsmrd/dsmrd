@@ -20,6 +20,10 @@
 #ifndef DAEMON_H
 #define DAEMON_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 int daemonize();
 
 #endif // DAEMON_H

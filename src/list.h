@@ -20,6 +20,9 @@
 #ifndef LIST_H
 #define LIST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

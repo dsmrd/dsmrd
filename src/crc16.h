@@ -20,6 +20,10 @@
 #ifndef CRC16_h
 #define CRC16_h
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 unsigned short crc16(unsigned short crc, unsigned char buf);
 
 #endif // CRC16_h

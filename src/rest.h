@@ -20,6 +20,9 @@
 #ifndef REST_H
 #define REST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include "http.h"
 
 void rest_init(handler_t);

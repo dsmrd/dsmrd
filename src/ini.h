@@ -21,6 +21,10 @@
 #ifndef INI_H
 #define INI_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 typedef void (*myfunc_t)(const char*, const char*, const char*, void* data);
 
 void ini_read(const char* filename, myfunc_t callback, void* data);

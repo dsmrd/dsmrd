@@ -20,6 +20,9 @@
 #ifndef RBTREE_H
 #define RBTREE_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 typedef int (*rbtree_less_then_t)(void* a, void* b);
 typedef int (*rbtree_equals_t)(void* a, void* b);
 typedef void (*rbtree_free_key_t)(void* a);

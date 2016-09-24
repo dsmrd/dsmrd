@@ -20,6 +20,10 @@
 #ifndef DISPATCH_H
 #define DISPATCH_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 typedef struct struct_dispatch_t* dispatch_t;
 
 dispatch_t dispatch_init();

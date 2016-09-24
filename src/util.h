@@ -20,6 +20,9 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <string.h>
 #include <regex.h>
 

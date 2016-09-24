@@ -20,6 +20,9 @@
 #ifndef ACCEPT_H
 #define ACCEPT_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include "dispatch.h"
 #include "dsmr.h"
 

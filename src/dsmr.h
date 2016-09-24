@@ -20,6 +20,9 @@
 #ifndef _DSMR_H
 #define _DSMR_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdlib.h>
 #include <time.h>
 #include "rbtree.h"

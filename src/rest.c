@@ -86,6 +86,34 @@ int http_get_file(handler_t handler, http_server_vars_t server, void* data) {
 	return rval;
 }
 
+static int http_get_obis1(handler_t handler, http_server_vars_t method, void* data, dsmr_t dsmr) {
+	static char buf[1024] = "x";
+	obis_object_t object;
+
+	object = rbtree_get(dsmr->objects, data);
+	if (object == NULL) {
+		snprintf(buf, sizeof(buf), "N/A '%s'", (char*)data);
+	} else {
+		snprintf(buf, sizeof(buf), "%lu", (unsigned long)(object->v.m.t));
+	}
+
+	return http_write_response(handler, 200, buf);
+}
+
+static int http_get_obis2(handler_t handler, http_server_vars_t method, void* data, dsmr_t dsmr) {
+	static char buf[1024] = "x";
+	obis_object_t object;
+
+	object = rbtree_get(dsmr->objects, data);
+	if (object == NULL) {
+		snprintf(buf, sizeof(buf), "N/A '%s'", (char*)data);
+	} else {
+		snprintf(buf, sizeof(buf), "%f", object->v.m.d);
+	}
+
+	return http_write_response(handler, 200, buf);
+}
+
 static int http_get_obis(handler_t handler, http_server_vars_t method, void* data, dsmr_t dsmr) {
 	static char buf[1024] = "x";
 	obis_object_t object;
@@ -102,9 +130,10 @@ static int http_get_obis(handler_t handler, http_server_vars_t method, void* dat
 				(void) snprintf(buf, sizeof(buf), "%i", object->v.i);
 				break;
 			case TIME:
-				(void) snprintf(buf, sizeof(buf), "\"%s\"", ctime(&(object->v.t)));
-				buf[strlen(buf)-2] = '\"';
-				buf[strlen(buf)-1] = '\0';
+				//(void) snprintf(buf, sizeof(buf), "\"%s\"", ctime(&(object->v.t)));
+				//buf[strlen(buf)-2] = '\"';
+				//buf[strlen(buf)-1] = '\0';
+				snprintf(buf, sizeof(buf), "%lu", (unsigned long)(object->v.t));
 				break;
 			case MIN5:
 				(void) snprintf(buf, sizeof(buf), "\"%f, %s\"", object->v.m.d, ctime(&(object->v.m.t)));
@@ -124,55 +153,54 @@ static int http_get_obis(handler_t handler, http_server_vars_t method, void* dat
 
 void rest_init(handler_t handler) {
 	handler_register_default(handler, http_get_file, NULL);
-	handler_register_resource(handler, "/api/electricity/tariff1",                  "GET", http_get_obis, OBIS_ELECTR_TO_CLIENT_TARIFF1);
-	handler_register_resource(handler, "/api/electricity/tariff2",                  "GET", http_get_obis, OBIS_ELECTR_TO_CLIENT_TARIFF2);
-	handler_register_resource(handler, "/api/electricity/tariffs/indicator",        "GET", http_get_obis, OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR);
-	handler_register_resource(handler, "/api/electricity/tariffs/1/delivered",      "GET", http_get_obis, OBIS_ELECTR_TO_CLIENT_TARIFF1);
-	handler_register_resource(handler, "/api/electricity/tariffs/2/delivered",      "GET", http_get_obis, OBIS_ELECTR_TO_CLIENT_TARIFF2);
-	handler_register_resource(handler, "/api/electricity/tariffs/1/received",       "GET", http_get_obis, OBIS_ELECTR_BY_CLIENT_TARIFF1);
-	handler_register_resource(handler, "/api/electricity/tariffs/2/received",       "GET", http_get_obis, OBIS_ELECTR_BY_CLIENT_TARIFF2);
-	handler_register_resource(handler, "/api/electricity/phases/1/power_delivered", "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L1);
-	handler_register_resource(handler, "/api/electricity/phases/2/power_delivered", "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L2);
-	handler_register_resource(handler, "/api/electricity/phases/3/power_delivered", "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L3);
-	handler_register_resource(handler, "/api/electricity/phases/1/power_received",  "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L1);
-	handler_register_resource(handler, "/api/electricity/phases/2/power_received",  "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L2);
-	handler_register_resource(handler, "/api/electricity/phases/3/power_received",  "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L3);
-	handler_register_resource(handler, "/api/electricity/phases/1/current",         "GET", http_get_obis, OBIS_ELECTR_INST_CURRENT_L1);
-	handler_register_resource(handler, "/api/electricity/phases/2/current",         "GET", http_get_obis, OBIS_ELECTR_INST_CURRENT_L2);
-	handler_register_resource(handler, "/api/electricity/phases/3/current",         "GET", http_get_obis, OBIS_ELECTR_INST_CURRENT_L3);
-	handler_register_resource(handler, "/api/electricity/phases/1/voltage",         "GET", http_get_obis, OBIS_ELECTR_INST_VOLTAGE_L1);
-	handler_register_resource(handler, "/api/electricity/phases/2/voltage",         "GET", http_get_obis, OBIS_ELECTR_INST_VOLTAGE_L2);
-	handler_register_resource(handler, "/api/electricity/phases/3/voltage",         "GET", http_get_obis, OBIS_ELECTR_INST_VOLTAGE_L3);
-	handler_register_resource(handler, "/api/electricity/power/delivered",          "GET", http_get_obis, OBIS_ELECTR_POWER_DELIVERED);
-	handler_register_resource(handler, "/api/electricity/power/received",           "GET", http_get_obis, OBIS_ELECTR_POWER_RECEIVED);
-	handler_register_resource(handler, "/api/electricity/equipment",                "GET", http_get_obis, OBIS_EQUIPMENT_IDENTIFIER);
-	handler_register_resource(handler, "/api/gas/type",                             "GET", http_get_obis, OBIS_DEVICE1_TYPE);
-	handler_register_resource(handler, "/api/gas/equipment",                        "GET", http_get_obis, OBIS_DEVICE1_EQUIPMENT_IDENTIFIER);
-	handler_register_resource(handler, "/api/gas/delivered",                        "GET", http_get_obis, OBIS_DEVICE1_LAST_5MIN_VALUE);
 	handler_register_resource(handler, "/api/version", "GET", http_get_obis, OBIS_VERSION);
-	handler_register_resource(handler, "/api/datetimestamp", "GET", http_get_obis, OBIS_DATETIME_STAMP);
-	handler_register_resource(handler, "/api/nof_power_failures", "GET", http_get_obis, OBIS_ELECTR_NOF_POWER_FAILURES);
-	handler_register_resource(handler, "/api/nof_long_power_failures", "GET", http_get_obis, OBIS_ELECTR_NOF_LONG_POWER_FAILURES);
-	handler_register_resource(handler, "/api/power_fail_event_log", "GET", http_get_obis, OBIS_ELECTR_POWER_FAILURE_EVENT_LOG);
-	handler_register_resource(handler, "/api/nof_voltage_sage_l1", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SAGE_L1);
-	handler_register_resource(handler, "/api/nof_voltage_sage_l2", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SAGE_L2);
-	handler_register_resource(handler, "/api/nof_voltage_sage_l3", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SAGE_L3);
-	handler_register_resource(handler, "/api/nof_voltage_swells_l1", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L1);
-	handler_register_resource(handler, "/api/nof_voltage_swells_l2", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L2);
-	handler_register_resource(handler, "/api/nof_voltage_swells_l3", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L3);
-	handler_register_resource(handler, "/api/text_message0", "GET", http_get_obis, OBIS_ELECTR_TEXT_MESSAGE0);
-	handler_register_resource(handler, "/api/text_message1", "GET", http_get_obis, OBIS_ELECTR_TEXT_MESSAGE1);
+	handler_register_resource(handler, "/api/devices/0/timestamp", "GET", http_get_obis, OBIS_DATETIME_STAMP);
+	handler_register_resource(handler, "/api/devices/0/tariffs/indicator",        "GET", http_get_obis, OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR);
+	handler_register_resource(handler, "/api/devices/0/tariffs/1/delivered",      "GET", http_get_obis, OBIS_ELECTR_TO_CLIENT_TARIFF1);
+	handler_register_resource(handler, "/api/devices/0/tariffs/2/delivered",      "GET", http_get_obis, OBIS_ELECTR_TO_CLIENT_TARIFF2);
+	handler_register_resource(handler, "/api/devices/0/tariffs/1/received",       "GET", http_get_obis, OBIS_ELECTR_BY_CLIENT_TARIFF1);
+	handler_register_resource(handler, "/api/devices/0/tariffs/2/received",       "GET", http_get_obis, OBIS_ELECTR_BY_CLIENT_TARIFF2);
+	handler_register_resource(handler, "/api/devices/0/phases/1/power_delivered", "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L1);
+	handler_register_resource(handler, "/api/devices/0/phases/2/power_delivered", "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L2);
+	handler_register_resource(handler, "/api/devices/0/phases/3/power_delivered", "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_DELV_L3);
+	handler_register_resource(handler, "/api/devices/0/phases/1/power_received",  "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L1);
+	handler_register_resource(handler, "/api/devices/0/phases/2/power_received",  "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L2);
+	handler_register_resource(handler, "/api/devices/0/phases/3/power_received",  "GET", http_get_obis, OBIS_ELECTR_INST_ACTIVE_POWER_RECV_L3);
+	handler_register_resource(handler, "/api/devices/0/phases/1/current",         "GET", http_get_obis, OBIS_ELECTR_INST_CURRENT_L1);
+	handler_register_resource(handler, "/api/devices/0/phases/2/current",         "GET", http_get_obis, OBIS_ELECTR_INST_CURRENT_L2);
+	handler_register_resource(handler, "/api/devices/0/phases/3/current",         "GET", http_get_obis, OBIS_ELECTR_INST_CURRENT_L3);
+	handler_register_resource(handler, "/api/devices/0/phases/1/voltage",         "GET", http_get_obis, OBIS_ELECTR_INST_VOLTAGE_L1);
+	handler_register_resource(handler, "/api/devices/0/phases/2/voltage",         "GET", http_get_obis, OBIS_ELECTR_INST_VOLTAGE_L2);
+	handler_register_resource(handler, "/api/devices/0/phases/3/voltage",         "GET", http_get_obis, OBIS_ELECTR_INST_VOLTAGE_L3);
+	handler_register_resource(handler, "/api/devices/0/power/delivered",          "GET", http_get_obis, OBIS_ELECTR_POWER_DELIVERED);
+	handler_register_resource(handler, "/api/devices/0/power/received",           "GET", http_get_obis, OBIS_ELECTR_POWER_RECEIVED);
+	handler_register_resource(handler, "/api/devices/0/equipment",                "GET", http_get_obis, OBIS_EQUIPMENT_IDENTIFIER);
+	handler_register_resource(handler, "/api/devices/0/nof_power_failures", "GET", http_get_obis, OBIS_ELECTR_NOF_POWER_FAILURES);
+	handler_register_resource(handler, "/api/devices/0/nof_long_power_failures", "GET", http_get_obis, OBIS_ELECTR_NOF_LONG_POWER_FAILURES);
+	handler_register_resource(handler, "/api/devices/0/power_fail_event_log", "GET", http_get_obis, OBIS_ELECTR_POWER_FAILURE_EVENT_LOG);
+	handler_register_resource(handler, "/api/devices/0/phases/1/nof_voltage_sage", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SAGE_L1);
+	handler_register_resource(handler, "/api/devices/0/phases/2/nof_voltage_sage", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SAGE_L2);
+	handler_register_resource(handler, "/api/devices/0/phases/3/nof_voltage_sage", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SAGE_L3);
+	handler_register_resource(handler, "/api/devices/0/phases/1/nof_voltage_swells", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L1);
+	handler_register_resource(handler, "/api/devices/0/phases/2/nof_voltage_swells", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L2);
+	handler_register_resource(handler, "/api/devices/0/phases/3/nof_voltage_swells", "GET", http_get_obis, OBIS_ELECTR_NOF_VOLTAGE_SWELLS_L3);
+	handler_register_resource(handler, "/api/devices/0/message/0",                  "GET", http_get_obis, OBIS_ELECTR_TEXT_MESSAGE0);
+	handler_register_resource(handler, "/api/devices/0/message/1",                  "GET", http_get_obis, OBIS_ELECTR_TEXT_MESSAGE1);
 	handler_register_resource(handler, "/api/devices/1/type",                       "GET", http_get_obis, OBIS_DEVICE1_TYPE);
 	handler_register_resource(handler, "/api/devices/1/equipment",                  "GET", http_get_obis, OBIS_DEVICE1_EQUIPMENT_IDENTIFIER);
-	handler_register_resource(handler, "/api/devices/1/delivered",                  "GET", http_get_obis, OBIS_DEVICE1_LAST_5MIN_VALUE);
+	handler_register_resource(handler, "/api/devices/1/timestamp",                  "GET", http_get_obis1, OBIS_DEVICE1_LAST_5MIN_VALUE);
+	handler_register_resource(handler, "/api/devices/1/phases/0/delivered",         "GET", http_get_obis2, OBIS_DEVICE1_LAST_5MIN_VALUE);
 	handler_register_resource(handler, "/api/devices/2/type",                       "GET", http_get_obis, OBIS_DEVICE2_TYPE);
 	handler_register_resource(handler, "/api/devices/2/equipment",                  "GET", http_get_obis, OBIS_DEVICE2_EQUIPMENT_IDENTIFIER);
-	handler_register_resource(handler, "/api/devices/2/delivered",                  "GET", http_get_obis, OBIS_DEVICE2_LAST_5MIN_VALUE);
+	handler_register_resource(handler, "/api/devices/2/timestamp",                  "GET", http_get_obis1, OBIS_DEVICE2_LAST_5MIN_VALUE);
+	handler_register_resource(handler, "/api/devices/2/phases/0/delivered",         "GET", http_get_obis2, OBIS_DEVICE2_LAST_5MIN_VALUE);
 	handler_register_resource(handler, "/api/devices/3/type",                       "GET", http_get_obis, OBIS_DEVICE3_TYPE);
 	handler_register_resource(handler, "/api/devices/3/equipment",                  "GET", http_get_obis, OBIS_DEVICE3_EQUIPMENT_IDENTIFIER);
-	handler_register_resource(handler, "/api/devices/3/delivered",                  "GET", http_get_obis, OBIS_DEVICE3_LAST_5MIN_VALUE);
+	handler_register_resource(handler, "/api/devices/3/timestamp",                  "GET", http_get_obis1, OBIS_DEVICE3_LAST_5MIN_VALUE);
+	handler_register_resource(handler, "/api/devices/3/phases/0/delivered",         "GET", http_get_obis2, OBIS_DEVICE3_LAST_5MIN_VALUE);
 	handler_register_resource(handler, "/api/devices/4/type",                       "GET", http_get_obis, OBIS_DEVICE4_TYPE);
 	handler_register_resource(handler, "/api/devices/4/equipment",                  "GET", http_get_obis, OBIS_DEVICE4_EQUIPMENT_IDENTIFIER);
-	handler_register_resource(handler, "/api/devices/4/delivered",                  "GET", http_get_obis, OBIS_DEVICE4_LAST_5MIN_VALUE);
+	handler_register_resource(handler, "/api/devices/4/timestamp",                  "GET", http_get_obis1, OBIS_DEVICE4_LAST_5MIN_VALUE);
+	handler_register_resource(handler, "/api/devices/4/phases/0/delivered",         "GET", http_get_obis2, OBIS_DEVICE4_LAST_5MIN_VALUE);
 }
 

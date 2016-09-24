@@ -29,6 +29,13 @@
 <tr>
 <th>Electricity</th>
 <td id="equipment"></td>
+<tr><th>Version</th><td> <div id="version"></div></td></tr>
+<tr><th>Datetimestamp</th><td> <div id="datetimestamp"></div></td></tr>
+<tr><th>#Power failures</th><td> <div id="nof_power_failures"></div></td></tr>
+<tr><th>#Power long failures</th><td> <div id="nof_long_power_failures"></div></td></tr>
+<tr><th>Event log</th><td> <div id="power_fail_event_log"></div></td></tr>
+<tr><th>Msg 0</th><td> <div id="text_message0"></div></td></tr>
+<tr><th>Msg 1</th><td> <div id="text_message1"></div></td></tr>
 </tr>
 </table>
 </fieldset>
@@ -57,35 +64,6 @@
 </table>
 </fieldset>
 
-<table>
-<tr><th>Version</th><td> <div id="version"></div></td></tr>
-<tr><th>Datetimestamp</th><td> <div id="datetimestamp"></div></td></tr>
-<tr><th>#Power failures</th><td> <div id="nof_power_failures"></div></td></tr>
-<tr><th>#Power long failures</th><td> <div id="nof_long_power_failures"></div></td></tr>
-<tr><th>Event log</th><td> <div id="power_fail_event_log"></div></td></tr>
-<tr><th>Voltage Sage</th><td> <div id="nof_voltage_sage_l1"></div></td></tr>
-<tr><th>Voltage swells</th><td> <div id="nof_voltage_swells_l1"></div></td></tr>
-<tr><th>Msg 0</th><td> <div id="text_message0"></div></td></tr>
-<tr><th>Msg 1</th><td> <div id="text_message1"></div></td></tr>
-</table>
-
-<fieldset><legend>Instantaneous power</legend>
-<table summary="">
-<tr>
-<th>Delivered [kW]</th>
-<td>
-<div id="total_power"></div>
-</td>
-</tr>
-<tr>
-<th>Received [kW]</th>
-<td>
-<div id="total_recv_power"></div>
-</td>
-</tr>
-</table>
-</fieldset>
-
 <fieldset><legend>Per phase</legend>
 <table summary="">
 <tr>
@@ -93,18 +71,21 @@
 <th>L1</th>
 <th>L2</th>
 <th>L3</th>
+<th>Total</th>
 </tr>
 <tr>
 <th>P+(delv) [kW]</th>
 <td id="Pp1"></td>
 <td id="Pp2"></td>
 <td id="Pp3"></td>
+<td id="total_power"></td>
 </tr>
 <tr>
 <th>P-(recv) [kW]</th>
 <td id="Pn1"></td>
 <td id="Pn2"></td>
 <td id="Pn3"></td>
+<td id="total_recv_power"></td>
 </tr>
 <tr>
 <th>Current [A]</th>
@@ -118,6 +99,18 @@
 <td id="V2"></td>
 <td id="V3"></td>
 </tr>
+<tr>
+<th>Voltage Sage</th>
+<td><div id="nof_voltage_sage_l1"></div></td>
+<td><div id="nof_voltage_sage_l2"></div></td>
+<td><div id="nof_voltage_sage_l3"></div></td>
+</tr>
+<tr>
+<th>Voltage swells</th>
+<td><div id="nof_voltage_swells_l1"></div></td>
+<td><div id="nof_voltage_swells_l2"></div></td>
+<td><div id="nof_voltage_swells_l3"></div></td>
+</tr>
 </table>
 </fieldset>
 
@@ -129,6 +122,7 @@
 <table>
 <tr><th>Type:</th><td><span id="devices_1_type">-</span></td></tr>
 <tr><th>Equipment:</th><td><span id="devices_1_equipment">-</span></td></tr>
+<tr><th>Time:</th><td><span id="devices_1_timestamp">-</span></td></tr>
 <tr><th>Delivered:</th><td><span id="devices_1_delivered">-</span></td></tr>
 </table>
 
@@ -141,6 +135,7 @@
 <table>
 <tr><th>Type:</th><td><span id="devices_2_type">-</span></td></tr>
 <tr><th>Equipment:</th><td><span id="devices_2_equipment">-</span></td></tr>
+<tr><th>Time:</th><td><span id="devices_2_timestamp">-</span></td></tr>
 <tr><th>Delivered:</th><td><span id="devices_2_delivered">-</span></td></tr>
 </table>
   </p>
@@ -152,6 +147,7 @@
 <table>
 <tr><th>Type:</th><td><span id="devices_3_type">-</span></td></tr>
 <tr><th>Equipment:</th><td><span id="devices_3_equipment">-</span></td></tr>
+<tr><th>Time:</th><td><span id="devices_3_timestamp">-</span></td></tr>
 <tr><th>Delivered:</th><td><span id="devices_3_delivered">-</span></td></tr>
 </table>
   </p>
@@ -163,6 +159,7 @@
 <table>
 <tr><th>Type:</th><td><span id="devices_4_type">-</span></td>
 <tr><th>Equipment:</th><td><span id="devices_4_equipment">-</span></td>
+<tr><th>Time:</th><td><span id="devices_4_timestamp">-</span></td></tr>
 <tr><th>Delivered:</th><td><span id="devices_4_delivered">-</span></td>
 </table>
   </p>

@@ -57,7 +57,7 @@ static void entry_group_callback(AvahiEntryGroup* group, AvahiEntryGroupState st
 
 	switch (state) {
 		case AVAHI_ENTRY_GROUP_ESTABLISHED :
-			info("Service '%s' successfully established.", inst->name);
+			debug("Service '%s' successfully established.", inst->name);
 			break;
 		case AVAHI_ENTRY_GROUP_COLLISION : 
 			warning("Service name collision, renaming service to '%s'", inst->name);
@@ -71,10 +71,10 @@ static void entry_group_callback(AvahiEntryGroup* group, AvahiEntryGroupState st
 			dispatch_quit(inst->dispatch);
 			break;
 		case AVAHI_ENTRY_GROUP_UNCOMMITED:
-			info("AVAHI_ENTRY_GROUP_UNCOMMITED");
+			debug("AVAHI_ENTRY_GROUP_UNCOMMITED");
 			break;
 		case AVAHI_ENTRY_GROUP_REGISTERING:
-			info("AVAHI_ENTRY_GROUP_REGISTERING");
+			debug("AVAHI_ENTRY_GROUP_REGISTERING");
 			break;
 	}
 }
@@ -84,7 +84,7 @@ static void create_services(AvahiClient* c, avahi_t inst) {
 
 	assert(avahi_entry_group_is_empty(inst->group));
 
-	info("Adding service '%s'", inst->name);
+	info("Adding DNS-SD service '%s'", inst->name);
 
 	if ((ret = avahi_entry_group_add_service(inst->group, AVAHI_IF_UNSPEC, AVAHI_PROTO_INET, 0, inst->name, "_http._tcp", NULL, NULL, 8888, NULL)) < 0) {
 		error("Failed to add _http._tcp service: %s", avahi_strerror(ret));
@@ -110,7 +110,7 @@ static void client_callback(AvahiClient* c, AvahiClientState state, void* userda
 
 	switch (state) {
 		case AVAHI_CLIENT_S_RUNNING:
-			info("Avahi running");
+			debug("Avahi running");
 			create_services(c, inst);
 			break;
 		case AVAHI_CLIENT_FAILURE:
@@ -119,13 +119,13 @@ static void client_callback(AvahiClient* c, AvahiClientState state, void* userda
 			break;
 		case AVAHI_CLIENT_S_COLLISION:
 		case AVAHI_CLIENT_S_REGISTERING:
-			info("Avahi registering/collision");
+			debug("Avahi registering/collision");
 			//if (inst->group) {
 				avahi_entry_group_reset(inst->group);
 			//}
 			break;
 		case AVAHI_CLIENT_CONNECTING:
-			info("Avahi connecting");
+			debug("Avahi connecting");
 			break;
 	}
 }

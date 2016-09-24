@@ -181,7 +181,7 @@ int dispatch_register(dispatch_t dis, int fd, int (readcb)(void*), int (writecb)
 
 		dispatch_nfds(dis);
 
-		info("Registered handler %d", fd);
+		debug("Registered handler %d", fd);
 	}
 
 	return 0;
@@ -203,7 +203,7 @@ int dispatch_unreg_hook(dispatch_t dis, dispatch_hook_t hook) {
 	if (hook->cb_write != NULL) { FD_CLR(hook->fd, &(dis->writefds)); }
 	if (hook->cb_except != NULL) { FD_CLR(hook->fd, &(dis->exceptfds)); }
 
-	info("Unregistered handler %d", hook->fd);
+	debug("Unregistered handler %d", hook->fd);
 
 	// Clear and put in free
 	memset(hook, 0, sizeof(struct struct_dispatch_hook_t));

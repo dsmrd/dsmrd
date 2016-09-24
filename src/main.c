@@ -38,9 +38,35 @@
 static struct struct_dsmr_t dsmr;
 
 
+/*
+static void cb(void* key, void* value) {
+	obis_object_t o = value;
+	printf("%s = ", (char*)key);
+	switch (o->type) {
+		case INTEGER:
+			printf("INTEGER %d", o->v.i);
+			break;
+		case DOUBLE:
+			printf("DOUBLE %f %s", o->v.f.d, o->v.f.s);
+			break;
+		case TIME:
+			printf("TIME %s", ctime(&(o->v.t)));
+			break;
+		case MIN5:
+			printf("MIN5 %f %s", o->v.m.d, ctime(&(o->v.m.t)));
+			break;
+		case STRING:
+			printf("STRING %s", o->v.s);
+			break;
+	}
+	printf("\n");
+}
+*/
+
 static int dsmr_handle(dsmr_t dsmr_) {
 	dsmr = *dsmr_;
 	//dsmr_print(dsmr_);
+	//rbtree_foreach(dsmr_->objects, cb);
 	return 0;
 }
 
@@ -51,7 +77,7 @@ static int decoder(char* buf, ssize_t sz) {
 int main(int argc, char* argv[]) {
 	dispatch_t dis;
 	serial_t ser;
-    accept_t acc;
+	accept_t acc;
 	avahi_t ava;
 
 	printf("%s -- (C)2016 M.J. de Wit\n", PACKAGE_NAME);
@@ -65,15 +91,15 @@ int main(int argc, char* argv[]) {
 	(void) logging_init(options->daemonize, options->verbose, PACKAGE, LOG_DAEMON);
 	ser = serial_init(options->tty, options->baud, options->is_tty, decoder);
 	(void) dsmr_init(dsmr_handle, &dsmr);
-    ava = avahi_init("Slimme Meter");
+	ava = avahi_init("Smart Meter");
 	dis = dispatch_init();
 
-    acc = accept_init(options->port, &dsmr);
-    accept_open(acc, dis);
+	acc = accept_init(options->port, &dsmr);
+	accept_open(acc, dis);
 
 	(void) serial_open(ser, dis);
 
-    avahi_open(ava, dis);
+	avahi_open(ava, dis);
 
 	dispatch_handle_events(dis);
 

@@ -108,7 +108,7 @@ int accept_read(void* inst) {
 	if (newsockfd < 0) {
 		error("Cannot accept incoming connection: %s", strerror(errno));
 	} else {
-		info("Incoming connection");
+		debug("Incoming connection");
 		handler_t hdlr = handler_init(newsockfd, cli_addr, acc->dsmr);
 		handler_open(hdlr, acc->dis);
 	}

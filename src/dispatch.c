@@ -43,6 +43,7 @@ struct struct_dispatch_hook_t {
 	int (*cb_write)(void*);
 	int (*cb_except)(void*);
 	int (*cb_close)(void*);
+	int (*cb_timer)(void*);
 	void* instance;
 };
 
@@ -150,7 +151,7 @@ static void dispatch_nfds(dispatch_t dis) {
 	//debug("except: %s", fdset2string(&(dis->exceptfds), nfds+1));
 }
 
-int dispatch_register(dispatch_t dis, int fd, int (readcb)(void*), int (writecb)(void*), int (exceptcb)(void*), int (closecb)(void*), void* inst) {
+int dispatch_register(dispatch_t dis, int fd, int (readcb)(void*), int (writecb)(void*), int (exceptcb)(void*), int (closecb)(void*), /*@null@*/ int (timercb)(void*), void* inst) {
 	if (dis->free == NULL) {
 		error("Out of request_uris");
 	} else {
@@ -164,6 +165,7 @@ int dispatch_register(dispatch_t dis, int fd, int (readcb)(void*), int (writecb)
 		hook->cb_write = writecb;
 		hook->cb_except = exceptcb;
 		hook->cb_close = closecb;
+		hook->cb_timer = timercb;
 		hook->instance = inst;
 
 		// Set select bits
@@ -181,7 +183,7 @@ int dispatch_register(dispatch_t dis, int fd, int (readcb)(void*), int (writecb)
 
 		dispatch_nfds(dis);
 
-		debug("Registered handler %d", fd);
+		info("Registered handler %d", fd);
 	}
 
 	return 0;
@@ -203,7 +205,7 @@ int dispatch_unreg_hook(dispatch_t dis, dispatch_hook_t hook) {
 	if (hook->cb_write != NULL) { FD_CLR(hook->fd, &(dis->writefds)); }
 	if (hook->cb_except != NULL) { FD_CLR(hook->fd, &(dis->exceptfds)); }
 
-	debug("Unregistered handler %d", hook->fd);
+	info("Unregistered handler %d", hook->fd);
 
 	// Clear and put in free
 	memset(hook, 0, sizeof(struct struct_dispatch_hook_t));
@@ -274,7 +276,9 @@ int dispatch_handle_events(dispatch_t dis) {
 				if ((rval >= 0) && FD_ISSET(hook->fd, &exceptfds)) {
 					rval = hook->cb_except(hook->instance);
 				}
-
+if (hook->cb_timer) {
+rval = hook->cb_timer(hook->instance);
+}
 				if (rval < 0) {
 					if (hook->cb_close) {
 						debug("Closing %d", hook->fd);

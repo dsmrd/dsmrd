@@ -87,7 +87,7 @@ int accept_open(accept_t acc, dispatch_t dis) {
 				if (rval < 0) {
 					error("Cannot listen: %s", strerror(errno));
 				} else {
-					dispatch_register(dis, acc->fd, accept_read, NULL, NULL, accept_close, acc);
+					dispatch_register(dis, acc->fd, accept_read, NULL, NULL, accept_close, NULL, acc);
 					acc->dis = dis;
 				}
 			}

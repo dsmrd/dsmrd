@@ -23,7 +23,7 @@
 typedef struct struct_dispatch_t* dispatch_t;
 
 dispatch_t dispatch_init();
-int dispatch_register(dispatch_t dis, int fd, /*@null@*/ int (readcb)(void*), /*@null@*/ int (writecb)(void*), /*@null@*/ int (exceptcb)(void*), /*@null@*/ int (closecb)(void*), /*@null@*/ void* inst);
+int dispatch_register(dispatch_t dis, int fd, /*@null@*/ int (readcb)(void*), /*@null@*/ int (writecb)(void*), /*@null@*/ int (exceptcb)(void*), /*@null@*/ int (closecb)(void*), /*@null@*/ int (timercb)(void*), /*@null@*/ void* inst);
 int dispatch_unregister(dispatch_t dis, void* inst);
 int dispatch_handle_events(dispatch_t dis);
 int dispatch_quit(dispatch_t dis);

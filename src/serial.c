@@ -139,7 +139,7 @@ int serial_open(serial_t inst, dispatch_t dis) {
 			}
 		}
 
-		rval = dispatch_register(dis, inst->fd, serial_read, NULL, NULL, serial_close, inst);
+		rval = dispatch_register(dis, inst->fd, serial_read, NULL, NULL, serial_close, NULL, inst);
 		if (rval != 0) {
 			error("Cannot register serial port to dispatcher");
 		}

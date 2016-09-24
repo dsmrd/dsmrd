@@ -376,7 +376,7 @@ handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) 
 int handler_open(handler_t inst, dispatch_t dis) {
 	debug("Handler open");
 	inst->decoder = http_decoder_init(handler_callback, inst);
-	dispatch_register(dis, inst->fd, handler_read, NULL, NULL, handler_close, inst);
+	dispatch_register(dis, inst->fd, handler_read, NULL, NULL, handler_close, NULL, inst);
 	inst->dis = dis;
 	return 0;
 }

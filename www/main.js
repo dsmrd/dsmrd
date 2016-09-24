@@ -108,7 +108,7 @@ $(document).ready(function() {
 						});
 
 			$.getJSON('api/devices/0/tariffs/indicator', function(result){
-					$('#indicator').html(Number(result).toFixed(3));
+					$('#indicator').html(result);
 					}).fail(function() {
 						$('#indicator').html('N/A');
 						});

@@ -151,9 +151,21 @@ static int http_get_obis(handler_t handler, http_server_vars_t method, void* dat
 	return http_write_response(handler, 200, buf);
 }
 
+static int http_get_api(handler_t handler, http_server_vars_t method, void* data, dsmr_t dsmr) {
+	char* buf = "[{\"version\":3}]";
+	return http_write_response(handler, 200, buf);
+}
+
+static int http_get_devices(handler_t handler, http_server_vars_t method, void* data, dsmr_t dsmr) {
+	char* buf = "[ { \"0\": 0 }, { \"1\": 1 }, { \"2\": 2 }, { \"3\": 3 }, { \"4\": 4 } ]";
+	return http_write_response(handler, 200, buf);
+}
+
 void rest_init(handler_t handler) {
 	handler_register_default(handler, http_get_file, NULL);
+	handler_register_resource(handler, "/api", "GET", http_get_api, OBIS_VERSION);
 	handler_register_resource(handler, "/api/version", "GET", http_get_obis, OBIS_VERSION);
+	handler_register_resource(handler, "/api/devices", "GET", http_get_devices, NULL);
 	handler_register_resource(handler, "/api/devices/0/timestamp", "GET", http_get_obis, OBIS_DATETIME_STAMP);
 	handler_register_resource(handler, "/api/devices/0/tariffs/indicator",        "GET", http_get_obis, OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR);
 	handler_register_resource(handler, "/api/devices/0/tariffs/1/delivered",      "GET", http_get_obis, OBIS_ELECTR_TO_CLIENT_TARIFF1);

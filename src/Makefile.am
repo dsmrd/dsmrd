@@ -51,6 +51,8 @@ dsmrd_SOURCES += rbtree.h
 dsmrd_SOURCES += rbtree.c
 dsmrd_SOURCES += rest.h
 dsmrd_SOURCES += rest.c
+dsmrd_SOURCES += mqtt.h
+dsmrd_SOURCES += mqtt.c
 
 noinst_PROGRAMS = p1sim
 p1sim_SOURCES = p1sim.c

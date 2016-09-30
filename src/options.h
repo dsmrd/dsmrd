@@ -20,6 +20,9 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <limits.h>
 
 #ifndef PATH_MAX
@@ -62,7 +65,11 @@ struct struct_options_t {
 	options_startbits_t startbits;
 	options_parity_t parity;
 	options_stopbits_t stopbits;
-    char wwwdir[PATH_MAX];
+	char wwwdir[PATH_MAX];
+	int mqtt_port;
+	char mqtt_host[PATH_MAX];
+	char mqtt_name[256];
+	char dnssd_name[256];
 };
 
 typedef struct struct_options_t* options_t;

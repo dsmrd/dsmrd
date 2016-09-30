@@ -17,6 +17,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <unistd.h>
 #include <getopt.h>
 #include <string.h>
@@ -85,7 +88,31 @@ void myfunc(const char* section, const char* key, const char* value, void* data)
 					printf("Illegal [%s] option (key=%s)\n", section, key);
 				}
 			} else {
-				printf("Illegal option (section=%s)\n", section);
+				if (strcmp(section, "mqtt") == 0) {
+					if (strcmp(key, "port") == 0) {
+						options->mqtt_port = atoi(value);
+					} else {
+						if (strcmp(key, "host") == 0) {
+							strncpy(options->mqtt_host, value, sizeof(options->mqtt_host));
+						} else {
+							if (strcmp(key, "name") == 0) {
+								strncpy(options->mqtt_name, value, sizeof(options->mqtt_name));
+							} else {
+								printf("Illegal [%s] option (key=%s)\n", section, key);
+							}
+						}
+					}
+				} else {
+					if (strcmp(section, "dns-sd") == 0) {
+						if (strcmp(key, "name") == 0) {
+							strncpy(options->dnssd_name, value, sizeof(options->dnssd_name));
+						} else {
+							printf("Illegal [%s] option (key=%s)\n", section, key);
+						}
+					} else {
+						printf("Illegal option (section=%s)\n", section);
+					}
+				}
 			}
 		}
 	}
@@ -107,6 +134,10 @@ options_t options_init(int argc, char* argv[]) {
 	options.port = 8888;
 	options.is_tty = 1;
 	strncpy(options.tty, "tty", sizeof(options.tty));
+	options.mqtt_port = 1883;
+	strncpy(options.mqtt_host, "localhost", sizeof(options.mqtt_host));
+	strncpy(options.mqtt_name, "dmsrd", sizeof(options.mqtt_name));
+	strncpy(options.dnssd_name, "dmsrd", sizeof(options.dnssd_name));
 
 	ini_read("/etc/dsmrd.conf", myfunc, &options);
 	ini_read("./dsmrd.conf", myfunc, &options);

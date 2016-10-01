@@ -59,4 +59,6 @@ p1sim_SOURCES = p1sim.c
 
 AM_CPPFLAGS = -Wall -g
 AM_CPPFLAGS += -DWWWDIR='"$(wwwdir)"'
+AM_CPPFLAGS += -DSYSCONFDIR='"$(sysconfdir)"'
+AM_CPPFLAGS += -DLOCALSTATEDIR='"$(localstatedir)"'
 

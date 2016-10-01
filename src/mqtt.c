@@ -175,6 +175,7 @@ void mqtt_exit(mqtt_t inst) {
 	int rval;
 
 	mosquitto_destroy(inst->mosq);
+
 	rval = mosquitto_lib_cleanup();
 	if (rval != MOSQ_ERR_SUCCESS) {
 		debug("Cannot cleanup library: '%s'", mosquitto_strerror(rval));
@@ -208,7 +209,7 @@ static int mqtt_write(void* userdata) {
 			break;
 		case MOSQ_ERR_CONN_LOST:
 		default:
-			error("mosquitto_loop_read: %s", mosquitto_strerror(rval));
+			error("mosquitto_loop_write: %s", mosquitto_strerror(rval));
 			break;
 	}
 
@@ -225,7 +226,7 @@ static int mqtt_misc(void* userdata) {
 			break;
 		case MOSQ_ERR_CONN_LOST:
 		default:
-			error("mosquitto_loop_read: %s", mosquitto_strerror(rval));
+			error("mosquitto_loop_misc: %s", mosquitto_strerror(rval));
 			break;
 	}
 
@@ -236,11 +237,11 @@ static int mqtt_close(void* userdata) {
 	mqtt_t inst = (mqtt_t) userdata;
 	int rval;
 
-	info("mqtt_close");
+	info("Stopping MQTT service");
 
 	rval = mosquitto_disconnect(inst->mosq);
 	if (rval != MOSQ_ERR_SUCCESS) {
-		error("mosquitto_disconnect: %s", mosquitto_strerror(rval));
+		error("Cannot disconnect mosquitto: %s", mosquitto_strerror(rval));
 	}
 
 	return rval;

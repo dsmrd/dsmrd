@@ -17,6 +17,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -33,10 +36,12 @@
 #include "dispatch.h"
 #include "accept.h"
 #include "daemon.h"
+#include "mqtt.h"
 
 
 static struct struct_dsmr_t dsmr;
 
+static mqtt_t m;
 
 /*
 static void cb(void* key, void* value) {
@@ -63,10 +68,36 @@ static void cb(void* key, void* value) {
 }
 */
 
+static int publish(dsmr_t dsmr_) {
+	obis_object_t object;
+	char buf[1024];
+
+	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF1);
+	snprintf(buf, sizeof(buf), "%f", object->v.f.d);
+	mqtt_publish(m, "/dsmrd/devices/0/tariffs/1/delivered", buf);
+
+	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF2);
+	snprintf(buf, sizeof(buf), "%f", object->v.f.d);
+	mqtt_publish(m, "/dsmrd/devices/0/tariffs/2/delivered", buf);
+
+	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF1);
+	snprintf(buf, sizeof(buf), "%f", object->v.f.d);
+	mqtt_publish(m, "/dsmrd/devices/0/tariffs/1/received", buf);
+
+	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF2);
+	snprintf(buf, sizeof(buf), "%f", object->v.f.d);
+	mqtt_publish(m, "/dsmrd/devices/0/tariffs/2/received", buf);
+
+	return 0;
+}
+
 static int dsmr_handle(dsmr_t dsmr_) {
 	dsmr = *dsmr_;
 	//dsmr_print(dsmr_);
 	//rbtree_foreach(dsmr_->objects, cb);
+
+	publish(dsmr_);
+
 	return 0;
 }
 
@@ -91,8 +122,12 @@ int main(int argc, char* argv[]) {
 	(void) logging_init(options->daemonize, options->verbose, PACKAGE, LOG_DAEMON);
 	ser = serial_init(options->tty, options->baud, options->is_tty, decoder);
 	(void) dsmr_init(dsmr_handle, &dsmr);
-	ava = avahi_init("Smart Meter");
+	ava = avahi_init(options->dnssd_name);
+	m = mqtt_init();
+
 	dis = dispatch_init();
+
+	mqtt_open(m, dis, options->mqtt_name, options->mqtt_host, options->mqtt_port);
 
 	acc = accept_init(options->port, &dsmr);
 	accept_open(acc, dis);
@@ -102,6 +137,8 @@ int main(int argc, char* argv[]) {
 	avahi_open(ava, dis);
 
 	dispatch_handle_events(dis);
+
+	mqtt_exit(m);
 
 	dispatch_close(dis);
 

@@ -70,7 +70,7 @@ stats_t stats_init(char* name) {
 
 	rval = sqlite3_open(name, &inst->db);
 	if (rval != SQLITE_OK){
-		error("Can't open database: %s", sqlite3_errmsg(inst->db));
+		error("Can't open database %s: %s", name, sqlite3_errmsg(inst->db));
 		sqlite3_close(inst->db);
 	}
 
@@ -90,8 +90,6 @@ stats_t stats_init(char* name) {
 			STATS_TIMESTAMP_NAME, STATS_TIMESTAMP_NAME,
 			STATS_VALUE_NAME, STATS_VALUE_NAME, STATS_VALUE_NAME,
 			STATS_TABLE_NAME, STATS_TYPE_NAME, STATS_TYPE_PARAM);
-
-	printf("%s\n", buf);
 
 	rval = sqlite3_prepare_v2(inst->db, buf, -1, &inst->select, NULL);
 	if (rval != SQLITE_OK) {

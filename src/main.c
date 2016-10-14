@@ -37,11 +37,16 @@
 #include "accept.h"
 #include "daemon.h"
 #include "mqtt.h"
+#include "stats.h"
 
 
 static struct struct_dsmr_t dsmr;
 
 static mqtt_t m;
+
+static stats_t stats;
+static stats_data_t statsh;
+static stats_data_t statsr;
 
 /*
 static void cb(void* key, void* value) {
@@ -91,12 +96,31 @@ static int publish(dsmr_t dsmr_) {
 	return 0;
 }
 
+static int do_stats(dsmr_t dsmr_) {
+	obis_object_t object;
+	obis_object_t time_object;
+
+	time_object = rbtree_get(dsmr_->objects, OBIS_DATETIME_STAMP);
+
+	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF1);
+	stats_evaluate(stats, statsh, time_object->v.t, object->v.f.d);
+	//printf("%ld %f\n", time_object->v.t, object->v.f.d);
+
+	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF2);
+	stats_evaluate(stats, statsr, time_object->v.t, object->v.f.d);
+	//printf("%ld %f\n", time_object->v.t, object->v.f.d);
+
+	return 0;
+}
+
 static int dsmr_handle(dsmr_t dsmr_) {
 	dsmr = *dsmr_;
 	//dsmr_print(dsmr_);
 	//rbtree_foreach(dsmr_->objects, cb);
 
 	publish(dsmr_);
+
+	do_stats(dsmr_);
 
 	return 0;
 }
@@ -120,6 +144,10 @@ int main(int argc, char* argv[]) {
 	}
 
 	(void) logging_init(options->daemonize, options->verbose, PACKAGE, LOG_DAEMON);
+	stats = stats_init(options->stats_database);
+	statsh = stats_data_init(OBIS_ELECTR_TO_CLIENT_TARIFF1, STATS_TYPE_HOURLY);
+	statsr = stats_data_init(OBIS_ELECTR_TO_CLIENT_TARIFF2, STATS_TYPE_HOURLY);
+
 	ser = serial_init(options->tty, options->baud, options->is_tty, decoder);
 	(void) dsmr_init(dsmr_handle, &dsmr);
 	ava = avahi_init(options->dnssd_name);
@@ -141,6 +169,10 @@ int main(int argc, char* argv[]) {
 	mqtt_exit(m);
 
 	dispatch_close(dis);
+
+	stats_data_exit(statsh);
+	stats_data_exit(statsr);
+	stats_exit(stats);
 
 	return EXIT_SUCCESS;
 }

@@ -150,20 +150,20 @@ static int do_stats(dsmr_t dsmr_) {
 	stats_evaluate(stats, stats_device1_last_5min_value_daily, time_object->v.m.t, object->v.m.d);
 	stats_evaluate(stats, stats_device1_last_5min_value_weekly, time_object->v.m.t, object->v.m.d);
 
-	object = rbtree_get(dsmr_->objects, OBIS_DEVICE2_LAST_5MIN_VALUE);
-	stats_evaluate(stats, stats_device2_last_5min_value_hourly, time_object->v.m.t, object->v.m.d);
-	stats_evaluate(stats, stats_device2_last_5min_value_daily, time_object->v.m.t, object->v.m.d);
-	stats_evaluate(stats, stats_device2_last_5min_value_weekly, time_object->v.m.t, object->v.m.d);
+	//object = rbtree_get(dsmr_->objects, OBIS_DEVICE2_LAST_5MIN_VALUE);
+	//stats_evaluate(stats, stats_device2_last_5min_value_hourly, time_object->v.m.t, object->v.m.d);
+	//stats_evaluate(stats, stats_device2_last_5min_value_daily, time_object->v.m.t, object->v.m.d);
+	//stats_evaluate(stats, stats_device2_last_5min_value_weekly, time_object->v.m.t, object->v.m.d);
 
-	object = rbtree_get(dsmr_->objects, OBIS_DEVICE3_LAST_5MIN_VALUE);
-	stats_evaluate(stats, stats_device3_last_5min_value_hourly, time_object->v.m.t, object->v.m.d);
-	stats_evaluate(stats, stats_device3_last_5min_value_daily, time_object->v.m.t, object->v.m.d);
-	stats_evaluate(stats, stats_device3_last_5min_value_weekly, time_object->v.m.t, object->v.m.d);
+	//object = rbtree_get(dsmr_->objects, OBIS_DEVICE3_LAST_5MIN_VALUE);
+	//stats_evaluate(stats, stats_device3_last_5min_value_hourly, time_object->v.m.t, object->v.m.d);
+	//stats_evaluate(stats, stats_device3_last_5min_value_daily, time_object->v.m.t, object->v.m.d);
+	//stats_evaluate(stats, stats_device3_last_5min_value_weekly, time_object->v.m.t, object->v.m.d);
 
-	object = rbtree_get(dsmr_->objects, OBIS_DEVICE4_LAST_5MIN_VALUE);
-	stats_evaluate(stats, stats_device4_last_5min_value_hourly, time_object->v.m.t, object->v.m.d);
-	stats_evaluate(stats, stats_device4_last_5min_value_daily, time_object->v.m.t, object->v.m.d);
-	stats_evaluate(stats, stats_device4_last_5min_value_weekly, time_object->v.m.t, object->v.m.d);
+	//object = rbtree_get(dsmr_->objects, OBIS_DEVICE4_LAST_5MIN_VALUE);
+	//stats_evaluate(stats, stats_device4_last_5min_value_hourly, time_object->v.m.t, object->v.m.d);
+	//stats_evaluate(stats, stats_device4_last_5min_value_daily, time_object->v.m.t, object->v.m.d);
+	//stats_evaluate(stats, stats_device4_last_5min_value_weekly, time_object->v.m.t, object->v.m.d);
 
 	return 0;
 }

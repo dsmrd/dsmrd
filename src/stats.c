@@ -46,7 +46,7 @@ struct stats_data_struct_t {
 
 /*
 static const char* type2str(stats_type_t t) {
-	char* map[] = { NULL,  "HOURLY", "DAYLY", "WEEKLY" };
+	char* map[] = { NULL,  "HOURLY", "DAILY", "WEEKLY" };
 	return map[t];
 }
 */
@@ -210,7 +210,7 @@ int stats_evaluate(stats_t inst, stats_data_t stats, time_t a, double b) {
 			t->tm_min = 0;
 			newtime = mktime(t);
 			break;
-		case STATS_TYPE_DAYLY:
+		case STATS_TYPE_DAILY:
 			t = localtime(&a);
 			t->tm_sec = 0;
 			t->tm_min = 0;

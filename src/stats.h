@@ -25,7 +25,7 @@ typedef struct stats_data_struct_t* stats_data_t;
 
 typedef enum {
 	STATS_TYPE_HOURLY = 1,
-	STATS_TYPE_DAYLY = 2,
+	STATS_TYPE_DAILY = 2,
 	STATS_TYPE_WEEKLY = 3,
 } stats_type_t;
 

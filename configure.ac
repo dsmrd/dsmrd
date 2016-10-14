@@ -28,8 +28,11 @@ AC_CONFIG_HEADERS([config.h])
 AC_PROG_CC
 
 # Checks for libraries.
+AC_SEARCH_LIBS([cos], [m])
 AC_CHECK_LIB([avahi-common], [avahi_free])
 AC_CHECK_LIB([avahi-client], [avahi_client_free])
+AC_CHECK_LIB([mosquitto], [mosquitto_socket])
+AC_CHECK_LIB([sqlite3], [sqlite3_open])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])

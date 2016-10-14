@@ -110,7 +110,15 @@ void myfunc(const char* section, const char* key, const char* value, void* data)
 							printf("Illegal [%s] option (key=%s)\n", section, key);
 						}
 					} else {
-						printf("Illegal option (section=%s)\n", section);
+						if (strcmp(section, "statistics") == 0) {
+							if (strcmp(key, "database") == 0) {
+								strncpy(options->stats_database, value, sizeof(options->stats_database));
+							} else {
+								printf("Illegal [%s] option (key=%s)\n", section, key);
+							}
+						} else {
+							printf("Illegal option (section=%s)\n", section);
+						}
 					}
 				}
 			}
@@ -138,6 +146,7 @@ options_t options_init(int argc, char* argv[]) {
 	strncpy(options.mqtt_host, "localhost", sizeof(options.mqtt_host));
 	strncpy(options.mqtt_name, "dmsrd", sizeof(options.mqtt_name));
 	strncpy(options.dnssd_name, "dmsrd", sizeof(options.dnssd_name));
+	strncpy(options.stats_database, "/var/lib/dsmrd/dsmrd.stats", sizeof(options.stats_database));
 
 	ini_read("/etc/dsmrd.conf", myfunc, &options);
 	ini_read("./dsmrd.conf", myfunc, &options);

@@ -70,6 +70,7 @@ struct struct_options_t {
 	char mqtt_host[PATH_MAX];
 	char mqtt_name[256];
 	char dnssd_name[256];
+	char stats_database[256];
 };
 
 typedef struct struct_options_t* options_t;

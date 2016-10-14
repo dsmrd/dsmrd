@@ -34,7 +34,7 @@ char* p2msg5 =
 "/ISk5\\2MT382-1000\r\n\
 \r\n\
 1-3:0.2.8(50)\r\n\
-0-0:1.0.0(101209113020W)\r\n\
+0-0:1.0.0(%s)\r\n\
 0-0:96.1.1(4B384547303034303436333935353037)\r\n\
 1-0:1.8.1(%010.3f*kWh)\r\n\
 1-0:1.8.2(%010.3f*kWh)\r\n\
@@ -140,6 +140,7 @@ double kwh2 = 18.0;
 int main() {
 	FILE* fp;
 	char buf[4096];
+	char timebuf[32];
 	//char* buf = p1msg;
 	int i;
 	double v1, a1c, p1, a1 = 0.0;
@@ -148,6 +149,8 @@ int main() {
 	double tc;
 	double p;
 	int t = 0;
+	time_t tim = 12000000;
+	struct tm* tmp;
 
 	srand(time(0));
 
@@ -187,6 +190,10 @@ int main() {
 				kwh2 += (p / 1000);
 			}
 
+			tmp = localtime(&tim);
+			strftime(timebuf, sizeof(timebuf), "%Y%m%d%H%M%SW", tmp);
+			tim += 10;
+
 			//printf("v1=%f\n", v1);
 			//printf("a1c=%f\n", a1c);
 			//printf("a1=%f\n", a1);
@@ -194,6 +201,7 @@ int main() {
 			//printf("kwh1=%f\n", kwh1);
 			//printf("kwh2=%f\n", kwh2);
 			snprintf(buf, sizeof(buf), p2msg5,
+					timebuf,
 					kwh1,
 					kwh2,
 					t + 1,

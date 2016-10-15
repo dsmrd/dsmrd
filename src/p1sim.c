@@ -67,7 +67,7 @@ char* p2msg5 =
 1-0:62.7.0(00.000*kW)\r\n\
 0-1:24.1.0(003)\r\n\
 0-1:96.1.0(3232323241424344313233343536373839)\r\n\
-0-1:24.2.1(101209112500W)(12785.123*m3)\r\n\
+0-1:24.2.1(%s)(12785.123*m3)\r\n\
 !EF2F\r\n";
 
 /*
@@ -191,7 +191,7 @@ int main() {
 			}
 
 			tmp = localtime(&tim);
-			strftime(timebuf, sizeof(timebuf), "%Y%m%d%H%M%SW", tmp);
+			strftime(timebuf, sizeof(timebuf), "%y%m%d%H%M%SW", tmp);
 			tim += 10;
 
 			//printf("v1=%f\n", v1);
@@ -208,8 +208,8 @@ int main() {
 					p,
 					v1, v2, v3,
 					a1, a2, a3,
-					p1, p2, p3
-					);
+					p1, p2, p3,
+					timebuf);
 			i = fwrite(buf, strlen(buf), 1, fp);
 			fflush(fp);
 			sleep(1);

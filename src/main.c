@@ -124,46 +124,64 @@ static int do_stats(dsmr_t dsmr_) {
 	obis_object_t time_object;
 
 	time_object = rbtree_get(dsmr_->objects, OBIS_DATETIME_STAMP);
+	if (time_object != NULL) {
 
-	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF1);
-	stats_evaluate(stats, stats_electr_to_client_tariff1_hourly, time_object->v.t, object->v.f.d);
-	stats_evaluate(stats, stats_electr_to_client_tariff1_daily, time_object->v.t, object->v.f.d);
-	stats_evaluate(stats, stats_electr_to_client_tariff1_weekly, time_object->v.t, object->v.f.d);
+		object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF1);
+		if (object != NULL) {
+			stats_evaluate(stats, stats_electr_to_client_tariff1_hourly, time_object->v.t, object->v.f.d);
+			stats_evaluate(stats, stats_electr_to_client_tariff1_daily, time_object->v.t, object->v.f.d);
+			stats_evaluate(stats, stats_electr_to_client_tariff1_weekly, time_object->v.t, object->v.f.d);
+		}
 
-	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF2);
-	stats_evaluate(stats, stats_electr_to_client_tariff2_hourly, time_object->v.t, object->v.f.d);
-	stats_evaluate(stats, stats_electr_to_client_tariff2_daily, time_object->v.t, object->v.f.d);
-	stats_evaluate(stats, stats_electr_to_client_tariff2_weekly, time_object->v.t, object->v.f.d);
+		object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF2);
+		if (object != NULL) {
+			stats_evaluate(stats, stats_electr_to_client_tariff2_hourly, time_object->v.t, object->v.f.d);
+			stats_evaluate(stats, stats_electr_to_client_tariff2_daily, time_object->v.t, object->v.f.d);
+			stats_evaluate(stats, stats_electr_to_client_tariff2_weekly, time_object->v.t, object->v.f.d);
+		}
 
-	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF1);
-	stats_evaluate(stats, stats_electr_by_client_tariff1_hourly, time_object->v.t, object->v.f.d);
-	stats_evaluate(stats, stats_electr_by_client_tariff1_daily, time_object->v.t, object->v.f.d);
-	stats_evaluate(stats, stats_electr_by_client_tariff1_weekly, time_object->v.t, object->v.f.d);
+		object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF1);
+		if (object != NULL) {
+			stats_evaluate(stats, stats_electr_by_client_tariff1_hourly, time_object->v.t, object->v.f.d);
+			stats_evaluate(stats, stats_electr_by_client_tariff1_daily, time_object->v.t, object->v.f.d);
+			stats_evaluate(stats, stats_electr_by_client_tariff1_weekly, time_object->v.t, object->v.f.d);
+		}
 
-	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF2);
-	stats_evaluate(stats, stats_electr_by_client_tariff2_hourly, time_object->v.t, object->v.f.d);
-	stats_evaluate(stats, stats_electr_by_client_tariff2_daily, time_object->v.t, object->v.f.d);
-	stats_evaluate(stats, stats_electr_by_client_tariff2_weekly, time_object->v.t, object->v.f.d);
+		object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF2);
+		if (object != NULL) {
+			stats_evaluate(stats, stats_electr_by_client_tariff2_hourly, time_object->v.t, object->v.f.d);
+			stats_evaluate(stats, stats_electr_by_client_tariff2_daily, time_object->v.t, object->v.f.d);
+			stats_evaluate(stats, stats_electr_by_client_tariff2_weekly, time_object->v.t, object->v.f.d);
+		}
 
-	object = rbtree_get(dsmr_->objects, OBIS_DEVICE1_LAST_5MIN_VALUE);
-	stats_evaluate(stats, stats_device1_last_5min_value_hourly, time_object->v.m.t, object->v.m.d);
-	stats_evaluate(stats, stats_device1_last_5min_value_daily, time_object->v.m.t, object->v.m.d);
-	stats_evaluate(stats, stats_device1_last_5min_value_weekly, time_object->v.m.t, object->v.m.d);
+		object = rbtree_get(dsmr_->objects, OBIS_DEVICE1_LAST_5MIN_VALUE);
+		if (object != NULL) {
+			stats_evaluate(stats, stats_device1_last_5min_value_hourly, object->v.m.t, object->v.m.d);
+			stats_evaluate(stats, stats_device1_last_5min_value_daily, object->v.m.t, object->v.m.d);
+			stats_evaluate(stats, stats_device1_last_5min_value_weekly, object->v.m.t, object->v.m.d);
+		}
 
-	//object = rbtree_get(dsmr_->objects, OBIS_DEVICE2_LAST_5MIN_VALUE);
-	//stats_evaluate(stats, stats_device2_last_5min_value_hourly, time_object->v.m.t, object->v.m.d);
-	//stats_evaluate(stats, stats_device2_last_5min_value_daily, time_object->v.m.t, object->v.m.d);
-	//stats_evaluate(stats, stats_device2_last_5min_value_weekly, time_object->v.m.t, object->v.m.d);
+		object = rbtree_get(dsmr_->objects, OBIS_DEVICE2_LAST_5MIN_VALUE);
+		if (object != NULL) {
+			stats_evaluate(stats, stats_device2_last_5min_value_hourly, object->v.m.t, object->v.m.d);
+			stats_evaluate(stats, stats_device2_last_5min_value_daily, object->v.m.t, object->v.m.d);
+			stats_evaluate(stats, stats_device2_last_5min_value_weekly, object->v.m.t, object->v.m.d);
+		}
 
-	//object = rbtree_get(dsmr_->objects, OBIS_DEVICE3_LAST_5MIN_VALUE);
-	//stats_evaluate(stats, stats_device3_last_5min_value_hourly, time_object->v.m.t, object->v.m.d);
-	//stats_evaluate(stats, stats_device3_last_5min_value_daily, time_object->v.m.t, object->v.m.d);
-	//stats_evaluate(stats, stats_device3_last_5min_value_weekly, time_object->v.m.t, object->v.m.d);
+		object = rbtree_get(dsmr_->objects, OBIS_DEVICE3_LAST_5MIN_VALUE);
+		if (object != NULL) {
+			stats_evaluate(stats, stats_device3_last_5min_value_hourly, object->v.m.t, object->v.m.d);
+			stats_evaluate(stats, stats_device3_last_5min_value_daily, object->v.m.t, object->v.m.d);
+			stats_evaluate(stats, stats_device3_last_5min_value_weekly, object->v.m.t, object->v.m.d);
+		}
 
-	//object = rbtree_get(dsmr_->objects, OBIS_DEVICE4_LAST_5MIN_VALUE);
-	//stats_evaluate(stats, stats_device4_last_5min_value_hourly, time_object->v.m.t, object->v.m.d);
-	//stats_evaluate(stats, stats_device4_last_5min_value_daily, time_object->v.m.t, object->v.m.d);
-	//stats_evaluate(stats, stats_device4_last_5min_value_weekly, time_object->v.m.t, object->v.m.d);
+		object = rbtree_get(dsmr_->objects, OBIS_DEVICE4_LAST_5MIN_VALUE);
+		if (object != NULL) {
+			stats_evaluate(stats, stats_device4_last_5min_value_hourly, object->v.m.t, object->v.m.d);
+			stats_evaluate(stats, stats_device4_last_5min_value_daily, object->v.m.t, object->v.m.d);
+			stats_evaluate(stats, stats_device4_last_5min_value_weekly, object->v.m.t, object->v.m.d);
+		}
+	}
 
 	return 0;
 }

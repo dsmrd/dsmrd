@@ -28,16 +28,22 @@
 #include <stdio.h>
 #include <strings.h>
 #include <string.h>
+#include <time.h>
+#include <sys/time.h>
 #include <regex.h>
 #include <errno.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "logging.h"
-
+#include "list.h"
+#include "dispatch.h"
 
 
 typedef struct struct_dispatch_hook_t* dispatch_hook_t;
+
+typedef unsigned long dispatch_interval_t;
+
 struct struct_dispatch_hook_t {
 	dispatch_hook_t next;
 	dispatch_hook_t prev;
@@ -56,14 +62,20 @@ struct struct_dispatch_t {
 	fd_set readfds;
 	fd_set writefds;
 	fd_set exceptfds;
-	struct timeval timeout;
 	int done;
 	dispatch_hook_t free;
 	dispatch_hook_t used;
+	list_t timers;
 };
 
 typedef struct struct_dispatch_t* dispatch_t;
 
+struct dispatch_timer_struct_t {
+	struct timeval expire;
+	struct timeval reload;
+	void (*cb)(void*);
+	void* data;
+};
 
 
 static dispatch_t singleton;
@@ -73,8 +85,45 @@ void termination_handler(int signum) {
 }
 
 
-void dispatch_quit(dispatch_t inst) {
+static bool ptrcmp(const void* a, const void* b) {
+	return (int)(a - b);
+}
+
+static void suseconds2timeval(dispatch_interval_t ival, struct timeval* tv) {
+	tv->tv_sec = ival / 1000000;
+	tv->tv_usec = ival % 1000000;
+}
+
+static dispatch_interval_t timeval2suseconds(struct timeval* tv) {
+	return tv->tv_sec * 1000000 + tv->tv_usec;
+}
+
+static dispatch_timer_t dispatch_timer_init(int ival, void (*cb)(void*), void* data) {
+	struct timeval interval;
+	struct timeval now;
+	dispatch_timer_t inst;
+
+	(void) gettimeofday(&now, NULL);
+
+	suseconds2timeval(ival, &interval);
+
+	inst = malloc(sizeof(*inst));
+	timeradd(&now, &interval, &(inst->expire));
+	inst->reload = interval;
+	inst->cb = cb;
+	inst->data = data;
+
+	return inst;
+}
+
+static void dispatch_timer_exit(void* data) {
+	dispatch_timer_t inst = (void*) data;
+	free(inst);
+}
+
+int dispatch_quit(dispatch_t inst) {
 	inst->done = 1;
+	return 0;
 }
 
 
@@ -119,8 +168,8 @@ dispatch_t dispatch_init() {
 		}
 		inst->free = hook;
 	}
-	inst->timeout.tv_sec = 10;
-	inst->timeout.tv_usec = 0;
+
+	inst->timers = list_init(ptrcmp, dispatch_timer_exit);
 
 	singleton = inst;
 
@@ -137,6 +186,12 @@ dispatch_t dispatch_init() {
 	}
 
 	return inst;
+}
+
+int dispatch_exit(dispatch_t inst) {
+	list_exit(inst->timers);
+	free(inst);
+	return 0;
 }
 
 #define max(a, b) ((a>b)?(a):(b))
@@ -238,21 +293,71 @@ int dispatch_unregister(dispatch_t dis, void* inst) {
 	return 0;
 }
 
+
+static dispatch_interval_t dispatch_timer_eval(dispatch_timer_t inst) {
+	struct timeval now;
+	struct timeval diff;
+
+	(void) gettimeofday(&now, NULL);
+
+	if (timercmp(&inst->expire, &now, <)) {
+		inst->cb(inst->data);
+		timeradd(&inst->expire, &inst->reload, &inst->expire);
+	}
+
+	timersub(&inst->expire, &now, &diff);
+	return timeval2suseconds(&diff);
+}
+
+
+dispatch_timer_t dispatch_create_timer(dispatch_t inst, int ival, void (*cb)(void*), void* data) {
+	dispatch_timer_t t;
+	t = dispatch_timer_init(ival, cb, data);
+	list_add(inst->timers, t);
+	return t;
+}
+
+int dispatch_remove_timer(dispatch_t inst, dispatch_timer_t t) {
+	list_remove_by_value(inst->timers, t);
+	return 0;
+}
+
+static dispatch_interval_t dispatch_eval(dispatch_t inst) {
+	int i;
+	int to;
+	dispatch_interval_t mto = -1;
+
+	for (i = 0; i < list_size(inst->timers); i++) {
+		to = dispatch_timer_eval(list_get(inst->timers, i));
+		mto = (mto < to) ? mto : to;
+	}
+
+	return mto;
+}
+
 int dispatch_handle_events(dispatch_t dis) {
 	info("Started event handler");
 	int rval;
 	struct timeval timeout;
+	struct timeval* ptimeout;
 	fd_set readfds;
 	fd_set writefds;
 	fd_set exceptfds;
+	dispatch_interval_t to = 0;
 
 	while (!dis->done) {
-		timeout = dis->timeout;
 		readfds = dis->readfds;
 		writefds = dis->writefds;
 		exceptfds = dis->exceptfds;
 
-		rval = select(dis->nfds, &readfds, &writefds, &exceptfds, &timeout);
+		if (to != -1) {
+			suseconds2timeval(to, &timeout);
+			ptimeout = &timeout;
+		} else {
+			ptimeout = NULL;
+		}
+
+		rval = select(dis->nfds, &readfds, &writefds, &exceptfds, ptimeout);
 		if (rval < 0) {
 			if (errno != EINTR) {
 				error("Select failed: %s", strerror(errno));
@@ -294,6 +399,8 @@ rval = hook->cb_timer(hook->instance);
 
 				hook = hooknext;
 			}
+
+			to = dispatch_eval(dis);
 		}
 	}
 

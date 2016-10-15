@@ -151,6 +151,7 @@ int stats_select(stats_t inst, stats_data_t data) {
 		rval = sqlite3_step(inst->select);
 
 		if (rval == SQLITE_ROW) {
+/*
 			printf("row %d %02d %0.15f %0.15f %0.15f\n",
 					sqlite3_column_int(inst->select, 0),
 					sqlite3_column_int(inst->select, 1),
@@ -158,6 +159,7 @@ int stats_select(stats_t inst, stats_data_t data) {
 					sqlite3_column_double(inst->select, 3),
 					sqlite3_column_double(inst->select, 4)
 				  );
+*/
 		}
 
 	}
@@ -244,7 +246,7 @@ int stats_evaluate(stats_t inst, stats_data_t stats, time_t a, double b) {
 				char buf[256];
 				t = localtime(&newtime);
 				strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", t);
-				printf("%s - %f\n", buf, b);
+				//printf("%s - %f\n", buf, b);
 				rval = stats_update(inst, stats->type, stats->name, stats->prevtime, b - stats->prevvalue);
 			}
 			stats->prevvalue = b;
@@ -259,7 +261,7 @@ stats_data_t stats_data_init(char* name, stats_type_t type) {
 	stats_data_t inst;
 	inst = (stats_data_t) calloc(sizeof(*inst), 1);
 	inst->type = type;
-	strncpy(inst->name, name, sizeof(inst->type));
+	strncpy(inst->name, name, sizeof(inst->name));
 	return inst;
 }
 

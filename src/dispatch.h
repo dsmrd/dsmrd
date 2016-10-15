@@ -28,7 +28,7 @@ typedef struct struct_dispatch_t* dispatch_t;
 typedef struct dispatch_timer_struct_t* dispatch_timer_t;
 
 dispatch_t dispatch_init();
-int dispatch_register(dispatch_t dis, int fd, /*@null@*/ int (readcb)(void*), /*@null@*/ int (writecb)(void*), /*@null@*/ int (exceptcb)(void*), /*@null@*/ int (closecb)(void*), /*@null@*/ int (timercb)(void*), /*@null@*/ void* inst);
+int dispatch_register(dispatch_t dis, int fd, /*@null@*/ int (readcb)(void*), /*@null@*/ int (writecb)(void*), /*@null@*/ int (exceptcb)(void*), /*@null@*/ int (closecb)(void*), /*@null@*/ void* inst);
 int dispatch_unregister(dispatch_t dis, void* inst);
 dispatch_timer_t dispatch_create_timer(dispatch_t inst, int ival, void (*cb)(void*), void* data);
 int dispatch_remove_timer(dispatch_t inst, dispatch_timer_t t);

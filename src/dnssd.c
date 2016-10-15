@@ -225,7 +225,7 @@ static AvahiWatch* avahi_watch_new(const AvahiPoll* poll, int fd, AvahiWatchEven
 		default:
 							  error("Wrong event?");
 	}
-	rval = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, NULL, inst);
+	rval = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, inst);
 	assert(rval == 0);
 
 	return inst;
@@ -248,7 +248,7 @@ static void avahi_watch_update(AvahiWatch* inst, AvahiWatchEvent event) {
 			default:
 								  error("Wrong event?");
 		}
-		rval = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, NULL, inst);
+		rval = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, inst);
 		if (rval != 0) {
 			error("Cannot unregister");
 			dispatch_quit(inst->dispatch);

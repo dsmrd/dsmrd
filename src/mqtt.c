@@ -39,6 +39,7 @@
 struct mqtt_struct_t {
 	struct mosquitto* mosq;
 	dispatch_t dispatch;
+	dispatch_timer_t timer;
 	int connected;
 };
 
@@ -46,7 +47,7 @@ struct mqtt_struct_t {
 static int mqtt_read(void* userdata);
 static int mqtt_write(void* userdata);
 static int mqtt_close(void* userdata);
-static int mqtt_misc(void* userdata);
+static void mqtt_misc(void* userdata);
 
 static void on_log(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj, int level, const char* str) {
 	//mqtt_t inst = (mqtt_t) obj;
@@ -127,7 +128,7 @@ static void alarm_handler(/*@unused@*/ int signum) {
 			fd = mosquitto_socket(iii->mosq);
 			assert(fd != 0);
 
-			rval = dispatch_register(iii->dispatch, fd, mqtt_read, mqtt_write, NULL, mqtt_close, mqtt_misc, iii);
+			rval = dispatch_register(iii->dispatch, fd, mqtt_read, mqtt_write, NULL, mqtt_close, /*mqtt_misc,*/ iii);
 			assert(rval == 0);
 		}
 	}
@@ -216,7 +217,7 @@ static int mqtt_write(void* userdata) {
 	return 0;
 }
 
-static int mqtt_misc(void* userdata) {
+static void mqtt_misc(void* userdata) {
 	mqtt_t inst = (mqtt_t) userdata;
 	int rval;
 
@@ -229,8 +230,6 @@ static int mqtt_misc(void* userdata) {
 			error("mosquitto_loop_misc: %s", mosquitto_strerror(rval));
 			break;
 	}
-
-	return 0;
 }
 
 static int mqtt_close(void* userdata) {
@@ -270,8 +269,11 @@ int mqtt_open(mqtt_t inst, dispatch_t d, const char* name, const char* host, int
 	fd = mosquitto_socket(inst->mosq);
 	assert(fd != 0);
 
-	rval = dispatch_register(d, fd, mqtt_read, mqtt_write, NULL, mqtt_close, mqtt_misc, inst);
+	rval = dispatch_register(d, fd, mqtt_read, mqtt_write, NULL, mqtt_close, /*mqtt_misc,*/ inst);
 	assert(rval == 0);
+
+	inst->timer = dispatch_create_timer(d, 100000, mqtt_misc, inst);
+	assert(inst->timer != 0);
 
 	return rval;
 }

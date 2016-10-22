@@ -30,7 +30,8 @@ int logging_exit();
 void error(const char* fmt, ...);
 void warning(const char* fmt, ...);
 void info(const char* fmt, ...);
-void debug(const char* fmt, ...);
+#define debug(...) debug1(__FILE__, __LINE__, __VA_ARGS__)
+void debug1(const char* file, int line, const char* fmt, ...);
 
 #endif // LOGGING_H
 

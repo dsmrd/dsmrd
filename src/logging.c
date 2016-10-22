@@ -100,14 +100,14 @@ void info(const char* fmt, ...) {
 	va_end(ap);
 }
 
-void debug(const char* fmt, ...) {
+void debug1(const char* file, int line, const char* fmt, ...) {
 	char buf[256];
 	va_list ap;
 
 	va_start(ap, fmt);
 	if (0 == logging.to_syslog) {
 		if (logging.verbose > 2) {
-			(void) snprintf(buf, sizeof(buf), "D: %s\n", fmt);
+			(void) snprintf(buf, sizeof(buf), "D: %s#%d: %s\n", file, line, fmt);
 			(void) vprintf(buf, ap);
 		}
 	} else {

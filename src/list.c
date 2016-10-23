@@ -133,7 +133,9 @@ void list_clear(list_t inst) {
 		m = n->next;
 		val = node_exit(n);
 		//printf("exit val@%p\n", inst->val);
+if (inst->lfree != NULL) {
 		inst->lfree(val);
+}
 		n = m;
 	}
 	inst->head = NULL;
@@ -183,7 +185,7 @@ void iter_exit(iter_t inst) {
 
 bool iter_next(iter_t inst) {
 	bool rval;
-	rval = inst->node->next != NULL;
+	rval = (inst->node != NULL) && (inst->node->next != NULL);
 	if (rval) {
 		inst->node = inst->node->next;
 	}
@@ -204,7 +206,15 @@ bool iter_prev(iter_t inst) {
 }
 
 /*@null@*/ void* iter_get(iter_t inst) {
-	return node_get_value(iter_get_node(inst));
+	void* rval = NULL;
+	node_t node;
+
+	node = iter_get_node(inst);
+	if (node != NULL) {
+		rval = node_get_value(iter_get_node(inst));
+	}
+
+	return rval;
 }
 
 void list_add(list_t inst, void* val) {
@@ -291,8 +301,14 @@ bool list_contains(list_t inst, void* val) {
 }
 
 /*@null@*/ void* list_remove_by_value(list_t inst, void* val) {
+	void* rval = NULL;
+
 	node_t n = list_get_node_by_value(inst, val);
-	return list_remove_node(inst, n);
+	if (n != NULL) {
+		rval = list_remove_node(inst, n);
+	}
+
+	return rval;
 }
 
 /*@null@*/ char* list_to_string(list_t inst) {

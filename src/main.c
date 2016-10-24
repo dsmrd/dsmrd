@@ -250,7 +250,7 @@ int main(int argc, char* argv[]) {
 
 	dis = dispatch_init();
 
-	mqtt_open(m, dis, options->mqtt_name, options->mqtt_host, options->mqtt_port);
+	mqtt_open(m, dis, options->mqtt_name, options->mqtt_host, options->mqtt_port, 10);
 
 	acc = accept_init(options->port, &dsmr);
 	accept_open(acc, dis);

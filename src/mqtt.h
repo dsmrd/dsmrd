@@ -27,11 +27,11 @@
 
 typedef struct mqtt_struct_t* mqtt_t;
 
-mqtt_t mqtt_init();
+/*@null@*/ mqtt_t mqtt_init();
 void mqtt_exit(mqtt_t);
 int mqtt_publish(mqtt_t inst, char* topic, char* payload);
 //int mqtt_subscribe(mqtt_t inst, char* topic);
-int mqtt_open(mqtt_t inst, dispatch_t d, const char* name, const char* host, int port);
+int mqtt_open(mqtt_t inst, dispatch_t d, const char* name, const char* host, int port, int keepalive);
 
 #endif // MQTT_H
 

@@ -41,13 +41,9 @@ struct mqtt_struct_t {
 	dispatch_t dispatch;
 	dispatch_timer_t timer;
 	int connected;
+	int reconnect_timer;
 };
 
-
-static int mqtt_read(void* userdata);
-static int mqtt_write(void* userdata);
-static int mqtt_close(void* userdata);
-static void mqtt_misc(void* userdata);
 
 static void on_log(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj, int level, const char* str) {
 	//mqtt_t inst = (mqtt_t) obj;
@@ -65,7 +61,7 @@ static void on_log(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj, 
 			break;
 		case MOSQ_LOG_DEBUG:
 		default:
-			debug("mosquitto: %s", str);
+			//debug("mosquitto: %s", str);
 			break;
 	}
 }
@@ -75,14 +71,14 @@ static void on_connect(/*@unused@*/ struct mosquitto *mosq, void *obj, /*@unused
 
 	inst->connected = 1;
 
-	debug("MQTT connect: %s", mosquitto_connack_string(rc));
+	info("MQTT connect: %s", mosquitto_connack_string(rc));
 }
 
 static void on_disconnect(/*@unused@*/ struct mosquitto *mosq, void *obj, /*@unused@*/ int rc) {
 	mqtt_t inst = (mqtt_t) obj;
 	int rval;
 
-	debug("MQTT disconnect: %s", mosquitto_connack_string(rc));
+	info("MQTT disconnect: %s", (rc == 0) ? "Client disconnected" : "Unexpected disconnect");
 
 	rval = dispatch_unregister(inst->dispatch, inst);
 	assert(rval == 0);
@@ -115,59 +111,25 @@ static void on_unsubscribe(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ voi
 	debug("unsubscribe... mid=%d", mid);
 }
 
-static mqtt_t iii;
-static void alarm_handler(/*@unused@*/ int signum) {
-	int rval;
-	int fd;
-
-	if (iii->connected == 0) {
-		rval = mosquitto_reconnect(iii->mosq);
-		if (rval != MOSQ_ERR_SUCCESS) {
-			debug("Cannot reconnect: '%s'", mosquitto_strerror(rval));
-		} else {
-			fd = mosquitto_socket(iii->mosq);
-			assert(fd != 0);
-
-			rval = dispatch_register(iii->dispatch, fd, mqtt_read, mqtt_write, NULL, mqtt_close, /*mqtt_misc,*/ iii);
-			assert(rval == 0);
-		}
-	}
-}
-
 mqtt_t mqtt_init() {
-	mqtt_t inst;
+	mqtt_t inst = NULL;
 	int rval;
 	int major = 0;
 	int minor = 0;
 	int revision = 0;
-	struct sigaction new_action, old_action;
-	struct itimerval itv;
-
-	inst = (mqtt_t) calloc(sizeof(struct mqtt_struct_t), 1);
-	iii = inst;
 
 	(void) mosquitto_lib_version(&major, &minor, &revision);
 	info("Use mosquitto v%d.%d r%d", major, minor, revision);
 
 	rval = mosquitto_lib_init();
 	if (rval != MOSQ_ERR_SUCCESS) {
-		debug("Cannot initialize library: '%s'", mosquitto_strerror(rval));
+		error("Cannot initialize library: '%s'", mosquitto_strerror(rval));
+	} else {
+		inst = (mqtt_t) calloc(sizeof(struct mqtt_struct_t), 1);
+		if (inst == NULL) {
+			error("Cannot allocate mqtt");
+		}
 	}
-
-	memset(&new_action, 0, sizeof(new_action));
-	new_action.sa_handler = alarm_handler;
-    sigemptyset(&new_action.sa_mask);
-    new_action.sa_flags = 0;
-    rval = sigaction(SIGALRM, &new_action, &old_action);
-    if (rval != 0) {
-        error("Cannot register signal handler: %s", strerror(errno));
-	}
-
-	itv.it_value.tv_sec = 1;
-	itv.it_value.tv_usec = 0;
-	itv.it_interval.tv_sec = 2;
-	itv.it_interval.tv_usec = 0;
-	setitimer(0, &itv, NULL);
 
 	return inst;
 }
@@ -179,7 +141,7 @@ void mqtt_exit(mqtt_t inst) {
 
 	rval = mosquitto_lib_cleanup();
 	if (rval != MOSQ_ERR_SUCCESS) {
-		debug("Cannot cleanup library: '%s'", mosquitto_strerror(rval));
+		error("Cannot cleanup library: '%s'", mosquitto_strerror(rval));
 	}
 }
 
@@ -191,7 +153,13 @@ static int mqtt_read(void* userdata) {
 	switch (rval) {
 		case MOSQ_ERR_SUCCESS:
 			break;
+		case MOSQ_ERR_NO_CONN:
 		case MOSQ_ERR_CONN_LOST:
+			break;
+		case MOSQ_ERR_INVAL:
+		case MOSQ_ERR_NOMEM:
+		case MOSQ_ERR_PROTOCOL:
+		case MOSQ_ERR_ERRNO:
 		default:
 			error("mosquitto_loop_read: %s", mosquitto_strerror(rval));
 			break;
@@ -208,28 +176,19 @@ static int mqtt_write(void* userdata) {
 	switch (rval) {
 		case MOSQ_ERR_SUCCESS:
 			break;
+		case MOSQ_ERR_NO_CONN:
 		case MOSQ_ERR_CONN_LOST:
+			break;
+		case MOSQ_ERR_INVAL:
+		case MOSQ_ERR_NOMEM:
+		case MOSQ_ERR_PROTOCOL:
+		case MOSQ_ERR_ERRNO:
 		default:
 			error("mosquitto_loop_write: %s", mosquitto_strerror(rval));
 			break;
 	}
 
 	return 0;
-}
-
-static void mqtt_misc(void* userdata) {
-	mqtt_t inst = (mqtt_t) userdata;
-	int rval;
-
-	rval = mosquitto_loop_misc(inst->mosq);
-	switch (rval) {
-		case MOSQ_ERR_SUCCESS:
-			break;
-		case MOSQ_ERR_CONN_LOST:
-		default:
-			error("mosquitto_loop_misc: %s", mosquitto_strerror(rval));
-			break;
-	}
 }
 
 static int mqtt_close(void* userdata) {
@@ -246,50 +205,94 @@ static int mqtt_close(void* userdata) {
 	return rval;
 }
 
-int mqtt_open(mqtt_t inst, dispatch_t d, const char* name, const char* host, int port) {
+static void mqtt_misc(void* userdata) {
+	mqtt_t inst = (mqtt_t) userdata;
 	int rval;
 	int fd;
 
+	if (inst->connected == 0) {
+		inst->reconnect_timer++;
+		inst->reconnect_timer %= 20;
+		if (inst->reconnect_timer == 0) {
+			rval = mosquitto_reconnect(inst->mosq);
+			if (rval != MOSQ_ERR_SUCCESS) {
+				error("Cannot reconnect mosquitto: %s", mosquitto_strerror(rval));
+			} else {
+				fd = mosquitto_socket(inst->mosq);
+				assert(fd != 0);
+
+				rval = dispatch_register(inst->dispatch, fd, mqtt_read, mqtt_write, NULL, mqtt_close, inst);
+				assert(rval == 0);
+			}
+		}
+	}
+
+	rval = mosquitto_loop_misc(inst->mosq);
+	switch (rval) {
+		case MOSQ_ERR_SUCCESS:
+			break;
+		case MOSQ_ERR_NO_CONN:
+			//debug("mosquitto_loop_misc: No connection");
+			break;
+		case MOSQ_ERR_INVAL:
+		default:
+			error("mosquitto_loop_misc: %s", mosquitto_strerror(rval));
+			break;
+	}
+}
+
+int mqtt_open(mqtt_t inst, dispatch_t d, const char* name, const char* host, int port, int keepalive) {
+	int rval = -1;
+	int fd;
+
 	inst->mosq = mosquitto_new(name, true, inst);
-	assert(inst->mosq != NULL);
+	if (inst->mosq == NULL) {
+		error("Cannot create mqtt");
+	} else {
+		inst->dispatch = d;
 
-	inst->dispatch = d;
+		mosquitto_log_callback_set(inst->mosq, on_log);
+		mosquitto_connect_callback_set(inst->mosq, on_connect);
+		mosquitto_disconnect_callback_set(inst->mosq, on_disconnect);
+		mosquitto_publish_callback_set(inst->mosq, on_publish);
+		mosquitto_message_callback_set(inst->mosq, on_message);
+		mosquitto_subscribe_callback_set(inst->mosq, on_subscribe);
+		mosquitto_unsubscribe_callback_set(inst->mosq, on_unsubscribe);
 
-	mosquitto_log_callback_set(inst->mosq, on_log);
-	mosquitto_connect_callback_set(inst->mosq, on_connect);
-	mosquitto_disconnect_callback_set(inst->mosq, on_disconnect);
-	mosquitto_publish_callback_set(inst->mosq, on_publish);
-	mosquitto_message_callback_set(inst->mosq, on_message);
-	mosquitto_subscribe_callback_set(inst->mosq, on_subscribe);
-	mosquitto_unsubscribe_callback_set(inst->mosq, on_unsubscribe);
+		inst->timer = dispatch_create_timer(d, 2000000, mqtt_misc, inst);
+		if (inst->timer == NULL) {
+			error("Cannot create timer");
+		}
 
-	rval = mosquitto_connect(inst->mosq, host, port, 10);
-	assert(rval == 0);
+		rval = mosquitto_connect(inst->mosq, host, port, keepalive);
+		if (rval != MOSQ_ERR_SUCCESS) {
+			error("Cannot connect mqtt");
+		} else {
+			fd = mosquitto_socket(inst->mosq);
 
-	fd = mosquitto_socket(inst->mosq);
-	assert(fd != 0);
-
-	rval = dispatch_register(d, fd, mqtt_read, mqtt_write, NULL, mqtt_close, /*mqtt_misc,*/ inst);
-	assert(rval == 0);
-
-	inst->timer = dispatch_create_timer(d, 100000, mqtt_misc, inst);
-	assert(inst->timer != 0);
+			rval = dispatch_register(d, fd, mqtt_read, mqtt_write, NULL, mqtt_close, inst);
+			if (rval != 0) {
+				error("Cannot register mqtt");
+			}
+		}
+	}
 
 	return rval;
 }
 
 
 int mqtt_publish(mqtt_t inst, char* topic, char* payload) {
-	int rval;
+	int rval = 0;
 	int qos = 0;
-	int retain = 0;
+	bool retain = false;
 	int mid = 0;
 
-	rval = mosquitto_publish(inst->mosq, &mid, topic, (int)strlen(payload), payload, qos, retain);
-	if (rval != MOSQ_ERR_SUCCESS) {
-		debug("Cannot publish: '%s'", mosquitto_strerror(rval));
+	if (inst->connected != 0) {
+		rval = mosquitto_publish(inst->mosq, &mid, topic, (int)strlen(payload), payload, qos, retain);
+		if (rval != MOSQ_ERR_SUCCESS) {
+			error("Cannot publish: %s", mosquitto_strerror(rval));
+		}
 	}
-	assert(rval == 0);
 
 	return rval;
 }

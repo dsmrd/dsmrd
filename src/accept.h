@@ -27,12 +27,10 @@
 #include "dispatch.h"
 
 typedef struct struct_accept_t* accept_t;
-typedef int (*accept_callback_t)(dispatch_t, int, struct sockaddr_in, void*);
+typedef int (*accept_callback_t)(dispatch_t, int, struct sockaddr_in, /*@null@*/ /*@shared@*/ void*);
 
-accept_t accept_init(int port, accept_callback_t cb, void* data);
-int accept_open(accept_t acc, dispatch_t dis);
-int accept_read(void* inst);
-int accept_close(void* inst);
+/*@null@*/ accept_t accept_init(int port, accept_callback_t cb, /*@null@*/ /*@shared@*/ void* data);
+int accept_open(accept_t acc, /*@shared@*/ dispatch_t dis);
 
 #endif // ACCEPT_H
 

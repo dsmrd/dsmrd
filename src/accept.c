@@ -37,14 +37,18 @@
 #include "accept.h"
 
 
-
 struct struct_accept_t {
 	int fd;
 	int port;
-	dispatch_t dis;
+	/*@shared@*/ dispatch_t dis;
 	accept_callback_t cb;
-	void* data;
+	/*@null@*/ /*@shared@*/ void* data;
 };
+
+
+static int accept_read(void* inst);
+static int accept_close(/*@only@*/ void* inst);
+
 
 accept_t accept_init(int port, accept_callback_t cb, void* data) {
 	accept_t acc;
@@ -75,14 +79,14 @@ int accept_open(accept_t acc, dispatch_t dis) {
 		rval = -1;
 	} else {
 		int optval = 1;
-		rval = setsockopt(acc->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+		rval = setsockopt(acc->fd, SOL_SOCKET, SO_REUSEADDR, &optval, (socklen_t) sizeof(optval));
 		if (rval != 0) {
 			error("Cannot set socket options: %s", strerror(errno));
 		} else {
 			serv_addr.sin_family      = AF_INET;
 			serv_addr.sin_addr.s_addr = INADDR_ANY;
-			serv_addr.sin_port        = htons(acc->port);
-			rval = bind(acc->fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
+			serv_addr.sin_port        = htons((uint16_t) acc->port);
+			rval = bind(acc->fd, (struct sockaddr *) &serv_addr, (socklen_t) sizeof(serv_addr));
 			if (rval < 0) {
 				error("Cannot bind port: %s", strerror(errno));
 			} else {
@@ -90,7 +94,7 @@ int accept_open(accept_t acc, dispatch_t dis) {
 				if (rval < 0) {
 					error("Cannot listen: %s", strerror(errno));
 				} else {
-					dispatch_register(dis, acc->fd, accept_read, NULL, NULL, accept_close, acc);
+					(void) dispatch_register(dis, acc->fd, accept_read, NULL, NULL, accept_close, acc);
 					acc->dis = dis;
 				}
 			}
@@ -100,30 +104,31 @@ int accept_open(accept_t acc, dispatch_t dis) {
 	return rval;
 }
 
-int accept_read(void* inst) {
+static int accept_read(void* inst) {
 	accept_t acc = (accept_t) inst;
 	struct sockaddr_in cli_addr;
 	socklen_t clilen;
 	int newsockfd;
 
-	clilen = sizeof(cli_addr);
-    newsockfd = accept(acc->fd, (struct sockaddr *) &cli_addr, &clilen);
+	clilen = (socklen_t) sizeof(cli_addr);
+	memset(&cli_addr, 0, sizeof(cli_addr));
+	newsockfd = accept(acc->fd, (struct sockaddr *) &cli_addr, &clilen);
 	if (newsockfd < 0) {
 		error("Cannot accept incoming connection: %s", strerror(errno));
 	} else {
 		debug("Incoming connection");
-		acc->cb(acc->dis, newsockfd, cli_addr, acc->data);
+		(void) acc->cb(acc->dis, newsockfd, cli_addr, acc->data);
 	}
 
 	return 0;
 }
 
-int accept_close(void* inst) {
+static int accept_close(void* inst) {
 	accept_t acc = (accept_t) inst;
 
 	(void) dispatch_unregister_for_data(acc->dis, inst);
 
-	close(acc->fd);
+	(void) close(acc->fd);
 
 	free(acc);
 

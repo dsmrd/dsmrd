@@ -26,9 +26,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-
-typedef int bool;
+#include <stdbool.h>
 
 typedef struct list_struct_t* list_t;
 typedef struct node_struct_t* node_t;

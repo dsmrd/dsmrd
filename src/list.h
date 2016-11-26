@@ -58,6 +58,7 @@ bool iter_next(iter_t inst);
 bool iter_prev(iter_t inst);
 /*@null@*/ node_t iter_get_node(iter_t inst);
 /*@null@*/ void* iter_get(iter_t inst);
+bool iter_eof(iter_t inst);
 
 #endif // LIST_H
 

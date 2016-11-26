@@ -184,12 +184,12 @@ void iter_exit(iter_t inst) {
 }
 
 bool iter_next(iter_t inst) {
-	bool rval;
-	rval = (inst->node != NULL) && (inst->node->next != NULL);
-	if (rval) {
+	//bool rval;
+	//rval = (inst->node != NULL) && (inst->node->next != NULL);
+	if (inst->node != NULL) {
 		inst->node = inst->node->next;
 	}
-	return rval;
+	return (inst->node != NULL);
 }
 
 bool iter_prev(iter_t inst) {
@@ -215,6 +215,10 @@ bool iter_prev(iter_t inst) {
 	}
 
 	return rval;
+}
+
+bool iter_eof(iter_t inst) {
+	return inst->node == NULL;
 }
 
 void list_add(list_t inst, void* val) {

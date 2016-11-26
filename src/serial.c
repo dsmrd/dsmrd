@@ -111,7 +111,8 @@ serial_t serial_init(char* device, serial_baud_t baud, int is_tty, int (decoder)
 }
 
 int serial_open(serial_t inst, dispatch_t dis) {
-	int rval;
+	int rval = -1;
+	dispatch_hook_t hook;
 
 	info("Opening serial port");
 	inst->fd = open(inst->device, O_RDONLY | O_NOCTTY | O_NONBLOCK );
@@ -142,8 +143,8 @@ int serial_open(serial_t inst, dispatch_t dis) {
 			}
 		}
 
-		rval = dispatch_register(dis, inst->fd, serial_read, NULL, NULL, serial_close, inst);
-		if (rval != 0) {
+		hook = dispatch_register(dis, inst->fd, serial_read, NULL, NULL, serial_close, inst);
+		if (hook == 0) {
 			error("Cannot register serial port to dispatcher");
 		}
 
@@ -180,7 +181,7 @@ static int serial_close(void* data) {
 	serial_t inst = (serial_t) data;
 	int rval;
 
-	(void) dispatch_unregister(inst->dis, inst);
+	(void) dispatch_unregister_for_data(inst->dis, inst);
 
 	if (inst->is_tty != 0) {
 		rval = tcsetattr(inst->fd, TCSANOW, &(inst->oldtio));

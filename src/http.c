@@ -405,7 +405,7 @@ int handler_read(void* data) {
 int handler_close(void* data) {
 	handler_t hdlr = (handler_t) data;
 
-	(void) dispatch_unregister(hdlr->dis, hdlr);
+	(void) dispatch_unregister_for_data(hdlr->dis, hdlr);
 
 	http_decoder_exit(hdlr->decoder);
 

@@ -80,7 +80,7 @@ static void on_disconnect(/*@unused@*/ struct mosquitto *mosq, void *obj, /*@unu
 
 	info("MQTT disconnect: %s", (rc == 0) ? "Client disconnected" : "Unexpected disconnect");
 
-	rval = dispatch_unregister(inst->dispatch, inst);
+	rval = dispatch_unregister_for_data(inst->dispatch, inst);
 	assert(rval == 0);
 
 	inst->connected = 0;
@@ -207,6 +207,7 @@ static int mqtt_close(void* userdata) {
 
 static void mqtt_misc(void* userdata) {
 	mqtt_t inst = (mqtt_t) userdata;
+	dispatch_hook_t hook;
 	int rval;
 	int fd;
 
@@ -221,8 +222,8 @@ static void mqtt_misc(void* userdata) {
 				fd = mosquitto_socket(inst->mosq);
 				assert(fd != 0);
 
-				rval = dispatch_register(inst->dispatch, fd, mqtt_read, mqtt_write, NULL, mqtt_close, inst);
-				assert(rval == 0);
+				hook = dispatch_register(inst->dispatch, fd, mqtt_read, mqtt_write, NULL, mqtt_close, inst);
+				assert(hook != 0);
 			}
 		}
 	}
@@ -243,6 +244,7 @@ static void mqtt_misc(void* userdata) {
 
 int mqtt_open(mqtt_t inst, dispatch_t d, const char* name, const char* host, int port, int keepalive) {
 	int rval = -1;
+	dispatch_hook_t hook;
 	int fd;
 
 	inst->mosq = mosquitto_new(name, true, inst);
@@ -270,8 +272,8 @@ int mqtt_open(mqtt_t inst, dispatch_t d, const char* name, const char* host, int
 		} else {
 			fd = mosquitto_socket(inst->mosq);
 
-			rval = dispatch_register(d, fd, mqtt_read, mqtt_write, NULL, mqtt_close, inst);
-			if (rval != 0) {
+			hook = dispatch_register(d, fd, mqtt_read, mqtt_write, NULL, mqtt_close, inst);
+			if (hook == 0) {
 				error("Cannot register mqtt");
 			}
 		}

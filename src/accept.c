@@ -122,7 +122,7 @@ int accept_read(void* inst) {
 int accept_close(void* inst) {
 	accept_t acc = (accept_t) inst;
 
-	(void) dispatch_unregister(acc->dis, inst);
+	(void) dispatch_unregister_for_data(acc->dis, inst);
 
 	close(acc->fd);
 

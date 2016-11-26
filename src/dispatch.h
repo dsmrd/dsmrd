@@ -23,15 +23,21 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <sys/time.h>
 
 typedef struct struct_dispatch_t* dispatch_t;
+typedef struct dispatch_hook_struct_t* dispatch_hook_t;
 typedef struct dispatch_timer_struct_t* dispatch_timer_t;
+typedef unsigned long dispatch_interval_t;
 
 dispatch_t dispatch_init();
-int dispatch_register(dispatch_t dis, int fd, /*@null@*/ int (readcb)(void*), /*@null@*/ int (writecb)(void*), /*@null@*/ int (exceptcb)(void*), /*@null@*/ int (closecb)(void*), /*@null@*/ void* inst);
-int dispatch_unregister(dispatch_t dis, void* inst);
-dispatch_timer_t dispatch_create_timer(dispatch_t inst, int ival, void (*cb)(void*), void* data);
+dispatch_hook_t dispatch_register(dispatch_t dis, int fd, /*@null@*/ int (readcb)(void*), /*@null@*/ int (writecb)(void*), /*@null@*/ int (exceptcb)(void*), /*@null@*/ int (closecb)(void*), /*@null@*/ void* inst);
+int dispatch_unregister_for_data(dispatch_t dis, void* inst);
+int dispatch_unregister(dispatch_t dis, dispatch_hook_t inst);
+dispatch_timer_t dispatch_create_timer(dispatch_t inst, int usec, void (*cb)(void*), void* data);
 int dispatch_remove_timer(dispatch_t inst, dispatch_timer_t t);
+void dispatch_interval2timeval(dispatch_interval_t ival, /*@out@*/ struct timeval* tv);
+dispatch_interval_t dispatch_timeval2interval(struct timeval* tv);
 int dispatch_handle_events(dispatch_t dis);
 int dispatch_quit(dispatch_t dis);
 int dispatch_close(dispatch_t dis);

@@ -23,6 +23,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <assert.h>
 #include <avahi-client/client.h>
 #include <avahi-client/publish.h>
@@ -43,6 +44,7 @@ struct AvahiTimeout {
 	void* userdata;
 	int enable;
 	avahi_t poll;
+	dispatch_timer_t timer;
 };
 
 struct AvahiWatch {
@@ -74,17 +76,17 @@ static void entry_group_callback(AvahiEntryGroup* group, AvahiEntryGroupState st
 	char* n;
 
 	switch (state) {
-		case AVAHI_ENTRY_GROUP_ESTABLISHED :
+		case AVAHI_ENTRY_GROUP_ESTABLISHED:
 			debug("Service '%s' successfully established.", inst->name);
 			break;
-		case AVAHI_ENTRY_GROUP_COLLISION : 
+		case AVAHI_ENTRY_GROUP_COLLISION: 
 			warning("Service name collision, renaming service to '%s'", inst->name);
 			n = avahi_alternative_service_name(inst->name);
 			avahi_free(inst->name);
 			inst->name = n;
 			create_services(avahi_entry_group_get_client(group), inst);
 			break;
-		case AVAHI_ENTRY_GROUP_FAILURE :
+		case AVAHI_ENTRY_GROUP_FAILURE:
 			error("Entry group failure: %s", avahi_strerror(avahi_client_errno(avahi_entry_group_get_client(group))));
 			dispatch_quit(inst->dispatch);
 			break;
@@ -190,6 +192,7 @@ int avahi_watch_closecb(void* userdata) {
 	AvahiWatch* inst = (AvahiWatch*) userdata;
 	debug("avahi_watch_closecb");
 	inst->callback(inst, inst->fd, AVAHI_WATCH_HUP, inst->userdata);
+	dispatch_unregister_for_data(inst->dispatch, inst);
 	return 0;
 }
 
@@ -207,7 +210,7 @@ static char* watchevent2str(AvahiWatchEvent event) {
 
 static AvahiWatch* avahi_watch_new(const AvahiPoll* poll, int fd, AvahiWatchEvent event, AvahiWatchCallback callback, void* userdata) {
 	AvahiWatch* inst;
-	int rval;
+	dispatch_hook_t hook;
 	avahi_t ava = (avahi_t) poll->userdata;
 
 	debug("avahi_watch_new %p %s %p %p", poll, watchevent2str(event), callback, userdata);
@@ -225,17 +228,18 @@ static AvahiWatch* avahi_watch_new(const AvahiPoll* poll, int fd, AvahiWatchEven
 		default:
 							  error("Wrong event?");
 	}
-	rval = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, inst);
-	assert(rval == 0);
+	hook = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, inst);
+	assert(hook != 0);
 
 	return inst;
 }
 
 static void avahi_watch_update(AvahiWatch* inst, AvahiWatchEvent event) {
 	int rval;
+	dispatch_hook_t hook;
 
 	debug("avahi_watch_update %s", watchevent2str(event));
-	rval = dispatch_unregister(inst->dispatch, inst);
+	rval = dispatch_unregister_for_data(inst->dispatch, inst);
 	if (rval != 0) {
 		error("Cannot unregister");
 		dispatch_quit(inst->dispatch);
@@ -248,9 +252,9 @@ static void avahi_watch_update(AvahiWatch* inst, AvahiWatchEvent event) {
 			default:
 								  error("Wrong event?");
 		}
-		rval = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, inst);
-		if (rval != 0) {
-			error("Cannot unregister");
+		hook = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, inst);
+		if (hook == 0) {
+			error("Cannot register");
 			dispatch_quit(inst->dispatch);
 		}
 	}
@@ -267,9 +271,16 @@ static void avahi_watch_free(AvahiWatch* w) {
 	debug("avahi_watch_free");
 }
 
+static void timeout_callback(void* data) {
+	AvahiTimeout* inst = (AvahiTimeout*) data;
+	debug("Timeout");
+	inst->callback(inst, inst->userdata);
+}
+
 static AvahiTimeout* avahi_timeout_new(const AvahiPoll* poll, const struct timeval* tv, AvahiTimeoutCallback callback, void* userdata) {
 	AvahiTimeout* inst;
 	avahi_t ava = (avahi_t) poll->userdata;
+	dispatch_interval_t ival;
 
 	inst = (AvahiTimeout*) malloc(sizeof(AvahiTimeout));
 	if (inst == NULL) {
@@ -281,35 +292,68 @@ static AvahiTimeout* avahi_timeout_new(const AvahiPoll* poll, const struct timev
 		if (tv) {
 			inst->enable = 1;
 			inst->expiry = *tv;
+
+			{
+				struct timeval now;
+				struct timeval e;
+				(void) gettimeofday(&now, NULL);
+				timersub(tv, &now, &e);
+				ival = dispatch_timeval2interval(&e);
+				//debug("timer_sub %d.%06d", e.tv_sec, e.tv_usec);
+			}
+
+			inst->timer = dispatch_create_timer(ava->dispatch, ival, timeout_callback, inst);
+			debug("%p: Create timer: expire = %d us", inst->timer, ival);
 		} else {
 			inst->enable = 0;
+			inst->timer = NULL;
+			debug("%p: Create timer: disabled", inst->timer);
 		}
 		inst->poll = ava;
 
 		list_add(ava->timeouts, inst);
 
-		if (tv) {
-			debug("avahi_timeout_new %p %p tv_sec=%d tv_usec=%d", inst, ava, tv->tv_sec, tv->tv_usec);
-		} else {
-			debug("avahi_timeout_new inst=%p ava=%p tv=%p", inst, ava, tv);
+		//if (tv) {
+			//debug("avahi_timeout_new %p %p tv_sec=%d tv_usec=%d", inst, ava, tv->tv_sec, tv->tv_usec);
+		//} else {
+			//debug("avahi_timeout_new inst=%p ava=%p tv=%p", inst, ava, tv);
+		//}
 	}
-}
 
 	return inst;
 }
 
 static void avahi_timeout_update(AvahiTimeout* inst, const struct timeval* tv) {
+	dispatch_interval_t ival;
 	debug("avahi_timeout_update %p", inst);
+
+	dispatch_remove_timer(inst->poll->dispatch, inst->timer);
+
 	if (tv) {
 		inst->enable = 1;
 		inst->expiry = *tv;
+
+		{
+			struct timeval now;
+			struct timeval e;
+			(void) gettimeofday(&now, NULL);
+			timersub(tv, &now, &e);
+			ival = dispatch_timeval2interval(&e);
+			//debug("timer_sub %d.%06d", e.tv_sec, e.tv_usec);
+		}
+
+		inst->timer = dispatch_create_timer(inst->poll->dispatch, ival, timeout_callback, inst);
+		debug("%p: Update timer: expire = %d us", inst->timer, ival);
 	} else {
 		inst->enable = 0;
+		inst->timer = NULL;
+		debug("%p: Update timer: disabled", inst->timer);
 	}
 }
 
 static void avahi_timeout_free(AvahiTimeout* inst) {
 	debug("avahi_timeout_free %p", inst);
+	dispatch_remove_timer(inst->poll->dispatch, inst->timer);
 	free(inst);
 }
 
@@ -318,11 +362,19 @@ static bool timeout_cmp(const void* t1, const void* t2) {
 }
 
 static void timeout_lree(void* t) {
+	AvahiTimeout* inst = (AvahiTimeout*) t;
+	dispatch_remove_timer(inst->poll->dispatch, inst->timer);
 }
 
 avahi_t avahi_init(char* name) {
 	avahi_t inst = (avahi_t) calloc(sizeof(struct ava_struct_t), 1);
 	debug("avahi_init %p", inst);
+
+	{
+		char name[HOST_NAME_MAX];
+		gethostname(name, sizeof(name));
+		debug("hostname = %s", name);
+	}
 
 	inst->poll.userdata = inst;
 
@@ -354,6 +406,7 @@ void avahi_open(avahi_t inst, dispatch_t dis) {
 }
 
 void ava_close(avahi_t inst) {
+	//list_exit(inst->timeouts);
 	if (inst->client) {
 		avahi_client_free(inst->client);
 	}

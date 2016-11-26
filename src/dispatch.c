@@ -39,10 +39,8 @@
 #include "list.h"
 #include "dispatch.h"
 
+#define min(a,b) (((a)<(b))?(a):(b))
 
-typedef struct dispatch_hook_struct_t* dispatch_hook_t;
-
-typedef unsigned long dispatch_interval_t;
 
 struct dispatch_hook_struct_t {
 	int fd;
@@ -94,12 +92,12 @@ static bool ptrcmp(const void* a, const void* b) {
 	return !(a == b);
 }
 
-static void suseconds2timeval(dispatch_interval_t ival, /*@out@*/ struct timeval* tv) {
+void dispatch_interval2timeval(dispatch_interval_t ival, /*@out@*/ struct timeval* tv) {
 	tv->tv_sec = ival / 1000000;
 	tv->tv_usec = ival % 1000000;
 }
 
-static dispatch_interval_t timeval2suseconds(struct timeval* tv) {
+dispatch_interval_t dispatch_timeval2interval(struct timeval* tv) {
 	return tv->tv_sec * 1000000 + tv->tv_usec;
 }
 
@@ -113,11 +111,12 @@ static dispatch_interval_t timeval2suseconds(struct timeval* tv) {
 		error("Cannot allocate timer");
 	} else {
 		(void) gettimeofday(&now, NULL);
-		suseconds2timeval(ival, &interval);
+		dispatch_interval2timeval(ival, &interval);
 		timeradd(&now, &interval, &(inst->expire));
 		inst->reload = interval;
 		inst->cb = cb;
 		inst->data = data;
+		debug("(%p) Timer interval = %d (us)", inst, inst->reload);
 	}
 
 	return inst;
@@ -125,10 +124,12 @@ static dispatch_interval_t timeval2suseconds(struct timeval* tv) {
 
 static void dispatch_timer_exit(void* data) {
 	dispatch_timer_t inst = (void*) data;
+	debug("(%p) Freeing timer", inst);
 	free(inst);
 }
 
 int dispatch_quit(dispatch_t inst) {
+	debug("(%p) Quitting dispatcher", inst);
 	inst->done = 1;
 	return 0;
 }
@@ -220,10 +221,10 @@ static void dispatch_nfds(dispatch_t inst) {
 		inst->nfds = nfds+1;
 	}
 
-	debug("Number of file-descriptors = %d", nfds+1);
+	debug("(%p) Number of file-descriptors = %d", inst, inst->nfds);
 }
 
-int dispatch_register(dispatch_t inst, int fd, int (readcb)(void*), int (writecb)(void*), int (exceptcb)(void*), int (closecb)(void*), void* data) {
+dispatch_hook_t dispatch_register(dispatch_t inst, int fd, int (readcb)(void*), int (writecb)(void*), int (exceptcb)(void*), int (closecb)(void*), void* data) {
 	dispatch_hook_t hook;
 
 	hook = dispatch_hook_init(fd, readcb, writecb, exceptcb, closecb, data);
@@ -239,10 +240,12 @@ int dispatch_register(dispatch_t inst, int fd, int (readcb)(void*), int (writecb
 		info("Registered handler %d", fd);
 	}
 
-	return 0;
+	return hook;
 }
 
-int dispatch_unreg_hook(dispatch_t inst, dispatch_hook_t hook) {
+int dispatch_unregister(dispatch_t inst, dispatch_hook_t hook) {
+	debug("(%p) Unregistering hook %p", inst, hook);
+
 	if (hook->cb_read != NULL) { FD_CLR(hook->fd, &(inst->readfds)); }
 	if (hook->cb_write != NULL) { FD_CLR(hook->fd, &(inst->writefds)); }
 	if (hook->cb_except != NULL) { FD_CLR(hook->fd, &(inst->exceptfds)); }
@@ -256,7 +259,7 @@ int dispatch_unreg_hook(dispatch_t inst, dispatch_hook_t hook) {
 	return 0;
 }
 
-int dispatch_unregister(dispatch_t inst, void* data) {
+int dispatch_unregister_for_data(dispatch_t inst, void* data) {
 	dispatch_hook_t hook = NULL;
 
 	iter_t ihook = list_head(inst->hooks);
@@ -274,7 +277,7 @@ int dispatch_unregister(dispatch_t inst, void* data) {
 		if (((dispatch_hook_t)iter_get(ihook))->data != data) {
 			error("Cannot unregister hook (no match found)");
 		} else {
-			dispatch_unreg_hook(inst, hook);
+			dispatch_unregister(inst, hook);
 		}
 	}
 
@@ -288,18 +291,20 @@ static dispatch_interval_t dispatch_timer_evaluate(dispatch_timer_t inst) {
 	(void) gettimeofday(&now, NULL);
 
 	if (timercmp(&inst->expire, &now, <)) {
+		debug("(%p) Timer expiry, calling callback", inst);
 		inst->cb(inst->data);
 		timeradd(&inst->expire, &inst->reload, &inst->expire);
+		debug("(%p) Reloading timer %d (us)", inst, dispatch_timeval2interval(&inst->expire));
 	}
 
 	timersub(&inst->expire, &now, &diff);
-	return timeval2suseconds(&diff);
+	return dispatch_timeval2interval(&diff);
 }
 
-dispatch_timer_t dispatch_create_timer(dispatch_t inst, int ival, void (*cb)(void*), void* data) {
+dispatch_timer_t dispatch_create_timer(dispatch_t inst, int usec, void (*cb)(void*), void* data) {
 	dispatch_timer_t t;
 
-	t = dispatch_timer_init(ival, cb, data);
+	t = dispatch_timer_init(usec, cb, data);
 	list_add(inst->timers, t);
 
 	return t;
@@ -311,15 +316,36 @@ int dispatch_remove_timer(dispatch_t inst, dispatch_timer_t t) {
 	return 0;
 }
 
+static list_t _dispatch_list_copy(list_t l) {
+	list_t cpy;
+	iter_t ihook;
+
+	cpy = list_init(ptrcmp, NULL);
+	ihook = list_head(l);
+	while (!iter_eof(ihook)) {
+		list_add(cpy, iter_get(ihook));
+		iter_next(ihook);
+	}
+	iter_exit(ihook);
+
+	return cpy;
+}
+
 static dispatch_interval_t dispatch_handle_timers(dispatch_t inst) {
 	int i;
 	int to;
 	dispatch_interval_t mto = -1;
+	list_t timer_list;
+	iter_t timer_iter;
 
-	for (i = 0; i < list_size(inst->timers); i++) {
-		to = dispatch_timer_evaluate(list_get(inst->timers, i));
-		mto = (mto < to) ? mto : to;
+	timer_list = _dispatch_list_copy(inst->timers);
+	timer_iter = list_head(timer_list);
+	while (!iter_eof(timer_iter)) {
+		to = dispatch_timer_evaluate(iter_get(timer_iter));
+		mto = min(mto, to);
+		iter_next(timer_iter);
 	}
+	iter_exit(timer_iter);
 
 	return mto;
 }
@@ -332,7 +358,7 @@ int dispatch_handle_events(dispatch_t inst) {
 	fd_set readfds;
 	fd_set writefds;
 	fd_set exceptfds;
-	dispatch_interval_t to = 0;
+	dispatch_interval_t to = 100;
 
 	while (!(inst->done && (list_size(inst->hooks) == 0))) {
 		readfds = inst->readfds;
@@ -340,7 +366,7 @@ int dispatch_handle_events(dispatch_t inst) {
 		exceptfds = inst->exceptfds;
 
 		if (to != -1) {
-			suseconds2timeval(to, &timeout);
+			dispatch_interval2timeval(to, &timeout);
 			ptimeout = &timeout;
 		} else {
 			ptimeout = NULL;
@@ -357,6 +383,7 @@ exit(0);
 			iter_t ihook;
 			list_t cpy;
 
+//debug("Select");
 			cpy = list_init(ptrcmp, NULL);
 			ihook = list_head(inst->hooks);
 			if (iter_get(ihook) != NULL) {
@@ -376,6 +403,7 @@ exit(0);
 						rval = hook->cb_read(hook->data);
 					}
 					if ((rval >= 0) && FD_ISSET(hook->fd, &writefds)) {
+//debug("Hook %p", hook);
 						rval = hook->cb_write(hook->data);
 					}
 					if ((rval >= 0) && FD_ISSET(hook->fd, &exceptfds)) {
@@ -384,11 +412,11 @@ exit(0);
 
 					if (rval < 0) {
 						if (hook->cb_close) {
-							debug("Closing %d", hook->fd);
+							debug("(%p) Closing %d", hook, hook->fd);
 							hook->cb_close(hook->data);
 						} else {
-							debug("Unregistering %d", hook->fd);
-							dispatch_unreg_hook(inst, hook);
+							debug("(%p) Unregistering %d", hook, hook->fd);
+							dispatch_unregister(inst, hook);
 						}
 					}
 				} while (iter_next(ihook));
@@ -397,12 +425,14 @@ exit(0);
 			iter_exit(ihook);
 			list_exit(cpy);
 
+//debug("Timers");
 			to = dispatch_handle_timers(inst);
 
 			if ((inst->sigint) || (inst->sigterm)) {
 				iter_t ihook;
 				list_t cpy;
 
+debug("Stopping all");
 				cpy = list_init(ptrcmp, NULL);
 				ihook = list_head(inst->hooks);
 				if (iter_get(ihook) != NULL) {
@@ -421,7 +451,7 @@ exit(0);
 						}
 					} while (iter_next(ihook));
 				}
-				//printf("Done %d\n", list_size(inst->hooks));
+				printf("Done %d\n", list_size(inst->hooks));
 
 				list_exit(cpy);
 
@@ -451,7 +481,7 @@ int dispatch_close(dispatch_t inst) {
 					error("Cannot close hook");
 				}
 			} else {
-				dispatch_unreg_hook(inst, hook);
+				dispatch_unregister(inst, hook);
 			}
 		} while (iter_next(ihook));
 	} else {

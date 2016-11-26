@@ -33,9 +33,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "logging.h"
-#include "dsmr.h"
 #include "dispatch.h"
-#include "http.h"
 #include "accept.h"
 
 
@@ -44,10 +42,11 @@ struct struct_accept_t {
 	int fd;
 	int port;
 	dispatch_t dis;
-	dsmr_t dsmr;
+	accept_callback_t cb;
+	void* data;
 };
 
-accept_t accept_init(int port, dsmr_t dsmr) {
+accept_t accept_init(int port, accept_callback_t cb, void* data) {
 	accept_t acc;
 
 	info("Initializing webserver");
@@ -56,8 +55,9 @@ accept_t accept_init(int port, dsmr_t dsmr) {
 	if (acc == NULL) {
 		error("Failed to allocate acceptor");
 	} else {
-		acc->dsmr = dsmr;
 		acc->port = port;
+		acc->cb = cb;
+		acc->data = data;
 	}
 
 	return acc;
@@ -112,8 +112,7 @@ int accept_read(void* inst) {
 		error("Cannot accept incoming connection: %s", strerror(errno));
 	} else {
 		debug("Incoming connection");
-		handler_t hdlr = handler_init(newsockfd, cli_addr, acc->dsmr);
-		handler_open(hdlr, acc->dis);
+		acc->cb(acc->dis, newsockfd, cli_addr, acc->data);
 	}
 
 	return 0;

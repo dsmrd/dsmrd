@@ -35,6 +35,7 @@
 #include "dnssd.h"
 #include "dispatch.h"
 #include "accept.h"
+#include "http.h"
 #include "daemon.h"
 #include "mqtt.h"
 #include "stats.h"
@@ -202,6 +203,12 @@ static int decoder(char* buf, ssize_t sz) {
 	return dsmr_decode(buf, sz);
 }
 
+static int acc_cb(dispatch_t dis, int newsockfd, struct sockaddr_in cli_addr, void* data) {
+	handler_t hdlr = handler_init(newsockfd, cli_addr, (dsmr_t) data);
+	handler_open(hdlr, dis);
+	return 0;
+}
+
 int main(int argc, char* argv[]) {
 	dispatch_t dis;
 	serial_t ser;
@@ -252,7 +259,7 @@ int main(int argc, char* argv[]) {
 
 	mqtt_open(m, dis, options->mqtt_name, options->mqtt_host, options->mqtt_port, 10);
 
-	acc = accept_init(options->port, &dsmr);
+	acc = accept_init(options->port, acc_cb, &dsmr);
 	accept_open(acc, dis);
 
 	(void) serial_open(ser, dis);

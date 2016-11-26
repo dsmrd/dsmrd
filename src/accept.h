@@ -23,12 +23,13 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <netinet/in.h>
 #include "dispatch.h"
-#include "dsmr.h"
 
 typedef struct struct_accept_t* accept_t;
+typedef int (*accept_callback_t)(dispatch_t, int, struct sockaddr_in, void*);
 
-accept_t accept_init(int port, dsmr_t dsmr);
+accept_t accept_init(int port, accept_callback_t cb, void* data);
 int accept_open(accept_t acc, dispatch_t dis);
 int accept_read(void* inst);
 int accept_close(void* inst);

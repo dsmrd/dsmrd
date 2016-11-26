@@ -75,7 +75,7 @@ struct struct_http_decoder_t {
 	regex_t regex_request;
 	regex_t regex_header;
 	int (*callback)(void*, http_decoder_t);
-	void* data;
+	/*@null@*/ /*@shared@*/ void* data;
 };
 
 struct struct_handler_t {
@@ -105,7 +105,7 @@ typedef enum {
 	HTTP_RESPONSE_CODE_INTERNAL_SERVER_ERROR = 500,
 } http_response_code_t;
 
-struct {
+static struct {
 	http_response_code_t code;
 	char* name;
 } http_status_codes[] = {
@@ -120,7 +120,8 @@ struct {
 };
 
 
-int handler_read(void*);
+static int handler_read(void* data);
+static int handler_close(void* data);
 
 
 static /*@null@*/ http_decoder_t http_decoder_init(int (callback)(void*, http_decoder_t), void* data) {
@@ -146,7 +147,7 @@ static /*@null@*/ http_decoder_t http_decoder_init(int (callback)(void*, http_de
 	return inst;
 }
 
-static int http_decoder_exit(http_decoder_t inst) {
+static int http_decoder_exit(/*@only@*/ http_decoder_t inst) {
 	regfree(&inst->regex_request);
 	regfree(&inst->regex_header);
 	free(inst);
@@ -331,14 +332,14 @@ static int handler_callback(void* data, http_decoder_t decoder) {
 	return rval;
 }
 
-int string_less_then(void* a, void* b) { return strcmp(a, b) < 0; }
-int string_equals(void* a, void* b) { return strcmp(a,b) == 0; }
-void string_free(void* a) { }
-void rbtree_free(void* a) { rbtree_exit(a); }
-void resource_free(void* a) { free(a); }
+static int string_less_then(void* a, void* b) { return strcmp(a, b) < 0; }
+static int string_equals(void* a, void* b) { return strcmp(a,b) == 0; }
+static void string_free(void* a) { }
+static void rbtree_free(void* a) { rbtree_exit(a); }
+static void resource_free(void* a) { free(a); }
 
 void handler_register_resource(handler_t inst, char* resource, char* method,
-		int (*cb)(handler_t inst, http_server_vars_t server, void* data, dsmr_t dsmr), void* data) {
+		int (*cb)(handler_t inst, http_server_vars_t server, void* data, dsmr_t dsmr), /*@null@*/ /*@shared@*/ void* data) {
 	rbtree_t m;
 	struct resource_info* info;
 
@@ -354,7 +355,7 @@ void handler_register_resource(handler_t inst, char* resource, char* method,
 }
 
 void handler_register_default(handler_t inst,
-		int (*cb)(handler_t inst, http_server_vars_t server, void* data), void* data) {
+		int (*cb)(handler_t inst, http_server_vars_t server, void* data), /*@null@*/ /*@shared@*/ void* data) {
 	inst->default_callback = cb;
 	inst->default_callback_data = data;
 }
@@ -363,13 +364,15 @@ handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) 
 	handler_t inst;
 
 	inst = (handler_t) calloc(sizeof(struct struct_handler_t), 1);
-	inst->fd = newsockfd;
-	inst->addr = cli_addr;
-	inst->dsmr = dsmr;
+	if (inst != NULL) {
+		inst->fd = newsockfd;
+		inst->addr = cli_addr;
+		inst->dsmr = dsmr;
 
-	inst->resources = rbtree_init(string_less_then, string_equals, string_free, rbtree_free);
+		inst->resources = rbtree_init(string_less_then, string_equals, string_free, rbtree_free);
 
-	rest_init(inst);
+		rest_init(inst);
+	}
 
 	debug("Handler init");
 
@@ -384,32 +387,33 @@ int handler_open(handler_t inst, dispatch_t dis) {
 	return 0;
 }
 
-int handler_read(void* data) {
+static int handler_read(void* data) {
 	handler_t inst = (handler_t) data;
 	ssize_t len;
 	char buf[4096];
+	int rval = 0;
 
 	debug("Handler read");
 
 	len = read(inst->fd, buf, sizeof(buf)-1);
 	if (len < 1) {
 		debug("Read %d", len);
-		len = -1;
+		rval = -1;
 	} else {
-		len = http_decoder_read(inst->decoder, buf, len);
+		rval = http_decoder_read(inst->decoder, buf, len);
 	}
 
-	return len;
+	return rval;
 }
 
-int handler_close(void* data) {
+static int handler_close(void* data) {
 	handler_t hdlr = (handler_t) data;
 
 	(void) dispatch_unregister_for_data(hdlr->dis, hdlr);
 
-	http_decoder_exit(hdlr->decoder);
+	(void) http_decoder_exit(hdlr->decoder);
 
-	close(hdlr->fd);
+	(void) close(hdlr->fd);
 
 	rbtree_exit(hdlr->resources);
 	free(hdlr);

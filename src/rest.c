@@ -34,7 +34,7 @@
 #include "options.h"
 
 
-int http_get_file(handler_t handler, http_server_vars_t server, void* data) {
+static int http_get_file(handler_t handler, http_server_vars_t server, /*@unused@*/ void* data) {
 	char index[PATH_MAX];
 	char buf[1024];
 	int fd;
@@ -65,7 +65,7 @@ int http_get_file(handler_t handler, http_server_vars_t server, void* data) {
 		} else {
 			content_length = st.st_size;
 
-			(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n", content_length);
+			(void) snprintf(buf, sizeof(buf), "HTTP/1.1 200 OK\r\nContent-Length: %ld\r\n\r\n", content_length);
 			sz = write(handler_get_fd(handler), buf, strlen(buf));
 			if (sz < 0) {
 				error("Cannot write header");
@@ -76,7 +76,7 @@ int http_get_file(handler_t handler, http_server_vars_t server, void* data) {
 				if (sz < 0) {
 					error("Read error");
 				} else {
-					sz = write(handler_get_fd(handler), buf, sz);
+					sz = write(handler_get_fd(handler), buf, (size_t) sz);
 					if (sz < 0) {
 						error("Cannot write result");
 					}
@@ -89,41 +89,41 @@ int http_get_file(handler_t handler, http_server_vars_t server, void* data) {
 	return rval;
 }
 
-static int http_get_obis1(handler_t handler, http_server_vars_t method, void* data, dsmr_t dsmr) {
+static int http_get_obis1(handler_t handler, /*@unused@*/ http_server_vars_t method, void* data, dsmr_t dsmr) {
 	static char buf[1024] = "x";
 	obis_object_t object;
 
 	object = rbtree_get(dsmr->objects, data);
 	if (object == NULL) {
-		snprintf(buf, sizeof(buf), "N/A '%s'", (char*)data);
+		(void) snprintf(buf, sizeof(buf), "N/A '%s'", (char*)data);
 	} else {
-		snprintf(buf, sizeof(buf), "%lu", (unsigned long)(object->v.m.t));
+		(void) snprintf(buf, sizeof(buf), "%lu", (unsigned long)(object->v.m.t));
 	}
 
 	return http_write_response(handler, 200, buf);
 }
 
-static int http_get_obis2(handler_t handler, http_server_vars_t method, void* data, dsmr_t dsmr) {
+static int http_get_obis2(handler_t handler, /*@unused@*/ http_server_vars_t method, void* data, dsmr_t dsmr) {
 	static char buf[1024] = "x";
 	obis_object_t object;
 
 	object = rbtree_get(dsmr->objects, data);
 	if (object == NULL) {
-		snprintf(buf, sizeof(buf), "N/A '%s'", (char*)data);
+		(void) snprintf(buf, sizeof(buf), "N/A '%s'", (char*)data);
 	} else {
-		snprintf(buf, sizeof(buf), "%f", object->v.m.d);
+		(void) snprintf(buf, sizeof(buf), "%f", object->v.m.d);
 	}
 
 	return http_write_response(handler, 200, buf);
 }
 
-static int http_get_obis(handler_t handler, http_server_vars_t method, void* data, dsmr_t dsmr) {
+static int http_get_obis(handler_t handler, /*@unused@*/ http_server_vars_t method, void* data, dsmr_t dsmr) {
 	static char buf[1024] = "x";
 	obis_object_t object;
 
 	object = rbtree_get(dsmr->objects, data);
 	if (object == NULL) {
-		snprintf(buf, sizeof(buf), "N/A '%s'", (char*)data);
+		(void) snprintf(buf, sizeof(buf), "N/A '%s'", (char*)data);
 	} else {
 		switch (object->type) {
 			case DOUBLE:
@@ -136,7 +136,7 @@ static int http_get_obis(handler_t handler, http_server_vars_t method, void* dat
 				//(void) snprintf(buf, sizeof(buf), "\"%s\"", ctime(&(object->v.t)));
 				//buf[strlen(buf)-2] = '\"';
 				//buf[strlen(buf)-1] = '\0';
-				snprintf(buf, sizeof(buf), "%lu", (unsigned long)(object->v.t));
+				(void) snprintf(buf, sizeof(buf), "%lu", (unsigned long)(object->v.t));
 				break;
 			case MIN5:
 				(void) snprintf(buf, sizeof(buf), "\"%f, %s\"", object->v.m.d, ctime(&(object->v.m.t)));
@@ -154,12 +154,12 @@ static int http_get_obis(handler_t handler, http_server_vars_t method, void* dat
 	return http_write_response(handler, 200, buf);
 }
 
-static int http_get_api(handler_t handler, http_server_vars_t method, void* data, dsmr_t dsmr) {
+static int http_get_api(handler_t handler, /*@unused@*/ http_server_vars_t method, /*@unused@*/ void* data, /*@unused@*/ dsmr_t dsmr) {
 	char* buf = "[{\"version\":3}]";
 	return http_write_response(handler, 200, buf);
 }
 
-static int http_get_devices(handler_t handler, http_server_vars_t method, void* data, dsmr_t dsmr) {
+static int http_get_devices(handler_t handler, /*@unused@*/ http_server_vars_t method, /*@unused@*/ void* data, /*@unused@*/ dsmr_t dsmr) {
 	char* buf = "[ { \"0\": 0 }, { \"1\": 1 }, { \"2\": 2 }, { \"3\": 3 }, { \"4\": 4 } ]";
 	return http_write_response(handler, 200, buf);
 }

@@ -26,7 +26,7 @@
 #include <string.h>
 #include <regex.h>
 
-/*@null@*/ char* regsubstr(char* dest, size_t n, const char* string, regmatch_t pmatch[], int idx);
+/*@null@*/ char* regsubstr(/*@out@*/ /*@unique@*/ char* dest, size_t n, const char* string, regmatch_t pmatch[], int idx);
 
 #endif // UTIL_H
 

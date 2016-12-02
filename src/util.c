@@ -27,7 +27,10 @@
     regoff_t so = pmatch[idx].rm_so;
     size_t len = (size_t)(eo - so);
     size_t min = (len < (n-1)) ? len : (n-1);
-    if (so == -1) { return NULL; }
+    if (so == -1) {
+		dest[0] = '\0';
+		return NULL;
+	}
     strncpy(dest, string+so, min);
     dest[min] = '\0';
     return dest;

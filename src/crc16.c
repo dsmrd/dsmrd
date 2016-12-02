@@ -58,6 +58,6 @@ static unsigned short crc16_table[256] = {
 };
 
 unsigned short crc16(unsigned short crc, unsigned char buf) {
-    return (crc >> 8) ^ crc16_table[(crc & 0xff) ^ buf];
+    return (crc >> 8) ^ crc16_table[(int)((crc & 0xff) ^ buf)];
 }
 

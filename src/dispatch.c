@@ -48,7 +48,7 @@ struct dispatch_hook_struct_t {
 	int (*cb_write)(void*);
 	int (*cb_except)(void*);
 	int (*cb_close)(void*);
-	void* data;
+	/*@null@*/ /*@shared@*/ void* data;
 };
 
 struct struct_dispatch_t {
@@ -67,7 +67,7 @@ struct dispatch_timer_struct_t {
 	struct timeval expire;
 	struct timeval reload;
 	void (*cb)(void*);
-	void* data;
+	/*@null@*/ /*@shared@*/ void* data;
 };
 
 
@@ -93,15 +93,15 @@ static bool ptrcmp(const void* a, const void* b) {
 }
 
 void dispatch_interval2timeval(dispatch_interval_t ival, /*@out@*/ struct timeval* tv) {
-	tv->tv_sec = ival / 1000000;
-	tv->tv_usec = ival % 1000000;
+	tv->tv_sec = (long) ival / 1000000;
+	tv->tv_usec = (long) ival % 1000000;
 }
 
 dispatch_interval_t dispatch_timeval2interval(struct timeval* tv) {
 	return tv->tv_sec * 1000000 + tv->tv_usec;
 }
 
-/*@null@*/ static dispatch_timer_t dispatch_timer_init(dispatch_interval_t ival, void (*cb)(void*), void* data) {
+/*@null@*/ static dispatch_timer_t dispatch_timer_init(dispatch_interval_t ival, void (*cb)(void*), /*@null@*/ void* data) {
 	struct timeval interval;
 	struct timeval now;
 	dispatch_timer_t inst;
@@ -134,7 +134,7 @@ int dispatch_quit(dispatch_t inst) {
 	return 0;
 }
 
-/*@null@*/ dispatch_hook_t dispatch_hook_init(int fd, int (*readcb)(void*), int (*writecb)(void*), int (*exceptcb)(void*), int (*closecb)(void*), void* data) {
+/*@null@*/ dispatch_hook_t dispatch_hook_init(int fd, int (*readcb)(void*), int (*writecb)(void*), int (*exceptcb)(void*), int (*closecb)(void*), /*@null@*/ void* data) {
 	dispatch_hook_t inst;
 
 	inst = (dispatch_hook_t) calloc(sizeof(struct dispatch_hook_struct_t), 1);
@@ -175,25 +175,27 @@ dispatch_t dispatch_init() {
 	int rval;
 
 	inst = (dispatch_t) calloc(sizeof(struct struct_dispatch_t), 1);
-	FD_ZERO(&(inst->readfds));
-	FD_ZERO(&(inst->writefds));
-	FD_ZERO(&(inst->exceptfds));
+	if (inst != NULL) {
+		FD_ZERO(&(inst->readfds));
+		FD_ZERO(&(inst->writefds));
+		FD_ZERO(&(inst->exceptfds));
 
-	inst->hooks = list_init(ptrcmp, dispatch_hook_exit);
-	inst->timers = list_init(ptrcmp, dispatch_timer_exit);
+		inst->hooks = list_init(ptrcmp, dispatch_hook_exit);
+		inst->timers = list_init(ptrcmp, dispatch_timer_exit);
 
-	singleton = inst;
+		singleton = inst;
 
-	new_action.sa_handler = termination_handler;
-	sigemptyset(&new_action.sa_mask);
-	new_action.sa_flags = 0;
-	rval = sigaction(SIGTERM, &new_action, &old_action);
-	if (rval != 0) {
-		error("Cannot register signal handler: %s", strerror(errno));
-	}
-	rval = sigaction(SIGINT, &new_action, NULL);
-	if (rval != 0) {
-		error("Cannot register signal handler: %s", strerror(errno));
+		new_action.sa_handler = termination_handler;
+		sigemptyset(&new_action.sa_mask);
+		new_action.sa_flags = 0;
+		rval = sigaction(SIGTERM, &new_action, &old_action);
+		if (rval != 0) {
+			error("Cannot register signal handler: %s", strerror(errno));
+		}
+		rval = sigaction(SIGINT, &new_action, NULL);
+		if (rval != 0) {
+			error("Cannot register signal handler: %s", strerror(errno));
+		}
 	}
 
 	return inst;
@@ -332,7 +334,6 @@ static list_t _dispatch_list_copy(list_t l) {
 }
 
 static dispatch_interval_t dispatch_handle_timers(dispatch_t inst) {
-	int i;
 	int to;
 	dispatch_interval_t mto = -1;
 	list_t timer_list;
@@ -377,13 +378,12 @@ int dispatch_handle_events(dispatch_t inst) {
 			if (errno != EINTR) {
 				error("Select failed: %s", strerror(errno));
 				inst->done = 1;
-exit(0);
+				break;
 			}
 		} else {
 			iter_t ihook;
 			list_t cpy;
 
-//debug("Select");
 			cpy = list_init(ptrcmp, NULL);
 			ihook = list_head(inst->hooks);
 			if (iter_get(ihook) != NULL) {
@@ -403,7 +403,6 @@ exit(0);
 						rval = hook->cb_read(hook->data);
 					}
 					if ((rval >= 0) && FD_ISSET(hook->fd, &writefds)) {
-//debug("Hook %p", hook);
 						rval = hook->cb_write(hook->data);
 					}
 					if ((rval >= 0) && FD_ISSET(hook->fd, &exceptfds)) {
@@ -425,14 +424,12 @@ exit(0);
 			iter_exit(ihook);
 			list_exit(cpy);
 
-//debug("Timers");
 			to = dispatch_handle_timers(inst);
 
 			if ((inst->sigint) || (inst->sigterm)) {
 				iter_t ihook;
 				list_t cpy;
 
-debug("Stopping all");
 				cpy = list_init(ptrcmp, NULL);
 				ihook = list_head(inst->hooks);
 				if (iter_get(ihook) != NULL) {
@@ -451,7 +448,7 @@ debug("Stopping all");
 						}
 					} while (iter_next(ihook));
 				}
-				printf("Done %d\n", list_size(inst->hooks));
+				//printf("Done %d\n", list_size(inst->hooks));
 
 				list_exit(cpy);
 
@@ -468,7 +465,9 @@ debug("Stopping all");
 
 int dispatch_close(dispatch_t inst) {
 	dispatch_hook_t hook;
-	iter_t ihook = list_head(inst->hooks);
+	iter_t ihook;
+
+	ihook = list_head(inst->hooks);
 	if (iter_get(ihook) != NULL) {
 		do {
 			int rval;

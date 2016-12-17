@@ -37,15 +37,16 @@
 
 
 struct mqtt_struct_t {
-	struct mosquitto* mosq;
-	dispatch_t dispatch;
-	dispatch_timer_t timer;
+	/*@shared@*/ struct mosquitto* mosq;
+	/*@shared@*/ dispatch_t dispatch;
+	/*@shared@*/ dispatch_timer_t timer;
 	int connected;
 	int reconnect_timer;
 };
 
 
-static void on_log(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj, int level, const char* str) {
+static void on_log(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj,
+		int level, const char* str) {
 	//mqtt_t inst = (mqtt_t) obj;
 
 	switch (level) {
@@ -66,7 +67,8 @@ static void on_log(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj, 
 	}
 }
 
-static void on_connect(/*@unused@*/ struct mosquitto *mosq, void *obj, /*@unused@*/ int rc) {
+static void on_connect(/*@unused@*/ struct mosquitto *mosq, void *obj,
+		/*@unused@*/ int rc) {
 	mqtt_t inst = (mqtt_t) obj;
 
 	inst->connected = 1;
@@ -74,7 +76,8 @@ static void on_connect(/*@unused@*/ struct mosquitto *mosq, void *obj, /*@unused
 	info("MQTT connect: %s", mosquitto_connack_string(rc));
 }
 
-static void on_disconnect(/*@unused@*/ struct mosquitto *mosq, void *obj, /*@unused@*/ int rc) {
+static void on_disconnect(/*@unused@*/ struct mosquitto *mosq, void *obj,
+		/*@unused@*/ int rc) {
 	mqtt_t inst = (mqtt_t) obj;
 	int rval;
 
@@ -86,26 +89,30 @@ static void on_disconnect(/*@unused@*/ struct mosquitto *mosq, void *obj, /*@unu
 	inst->connected = 0;
 }
 
-static void on_publish(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj, /*@unused@*/ int mid) {
+static void on_publish(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj,
+		/*@unused@*/ int mid) {
 	//mqtt_t inst = (mqtt_t) obj;
 
 	debug("publish... mid=%d", mid);
 }
 
-static void on_message(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj, /*@unused@*/ const struct mosquitto_message *msg) {
+static void on_message(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj,
+		/*@unused@*/ const struct mosquitto_message *msg) {
 	//mqtt_t inst = (mqtt_t) obj;
 
-	debug("message... mid=%d, topic=%s, payload=%s, payloadlen=%d, qos=%d, retail=%d", msg->mid, msg->topic, msg->payload, msg->payloadlen, msg->qos, msg->retain);
+	debug("message... mid=%d, topic=%s, payload=%s, payloadlen=%d, qos=%d, retain=%d", msg->mid, msg->topic, msg->payload, msg->payloadlen, msg->qos, msg->retain);
 
 }
 
-static void on_subscribe(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj, /*@unused@*/ int mid, /*@unused@*/ int qos_count, /*@unused@*/ const int* granted_qos) {
+static void on_subscribe(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj,
+		/*@unused@*/ int mid, /*@unused@*/ int qos_count, /*@unused@*/ const int* granted_qos) {
 	//mqtt_t inst = (mqtt_t) obj;
 
 	debug("subscribe... mid=%d, qos_count=%d", mid, qos_count);
 }
 
-static void on_unsubscribe(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj, /*@unused@*/ int mid) {
+static void on_unsubscribe(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj,
+		/*@unused@*/ int mid) {
 	//mqtt_t inst = (mqtt_t) obj;
 
 	debug("unsubscribe... mid=%d", mid);
@@ -172,20 +179,22 @@ static int mqtt_write(void* userdata) {
 	mqtt_t inst = (mqtt_t) userdata;
 	int rval;
 
-	rval = mosquitto_loop_write(inst->mosq, 1);
-	switch (rval) {
-		case MOSQ_ERR_SUCCESS:
-			break;
-		case MOSQ_ERR_NO_CONN:
-		case MOSQ_ERR_CONN_LOST:
-			break;
-		case MOSQ_ERR_INVAL:
-		case MOSQ_ERR_NOMEM:
-		case MOSQ_ERR_PROTOCOL:
-		case MOSQ_ERR_ERRNO:
-		default:
-			error("mosquitto_loop_write: %s", mosquitto_strerror(rval));
-			break;
+	if (mosquitto_want_write(inst->mosq)) {
+		rval = mosquitto_loop_write(inst->mosq, 1);
+		switch (rval) {
+			case MOSQ_ERR_SUCCESS:
+				break;
+			case MOSQ_ERR_NO_CONN:
+			case MOSQ_ERR_CONN_LOST:
+				break;
+			case MOSQ_ERR_INVAL:
+			case MOSQ_ERR_NOMEM:
+			case MOSQ_ERR_PROTOCOL:
+			case MOSQ_ERR_ERRNO:
+			default:
+				error("mosquitto_loop_write: %s", mosquitto_strerror(rval));
+				break;
+		}
 	}
 
 	return 0;
@@ -222,7 +231,7 @@ static void mqtt_misc(void* userdata) {
 				fd = mosquitto_socket(inst->mosq);
 				assert(fd != 0);
 
-				hook = dispatch_register(inst->dispatch, fd, mqtt_read, mqtt_write, NULL, mqtt_close, inst);
+				hook = dispatch_register(inst->dispatch, fd, mqtt_read, NULL, NULL, mqtt_close, inst);
 				assert(hook != 0);
 			}
 		}
@@ -240,6 +249,8 @@ static void mqtt_misc(void* userdata) {
 			error("mosquitto_loop_misc: %s", mosquitto_strerror(rval));
 			break;
 	}
+
+	(void) mqtt_write(inst);
 }
 
 int mqtt_open(mqtt_t inst, dispatch_t d, const char* name, const char* host, int port, int keepalive) {
@@ -272,7 +283,7 @@ int mqtt_open(mqtt_t inst, dispatch_t d, const char* name, const char* host, int
 		} else {
 			fd = mosquitto_socket(inst->mosq);
 
-			hook = dispatch_register(d, fd, mqtt_read, mqtt_write, NULL, mqtt_close, inst);
+			hook = dispatch_register(d, fd, mqtt_read, NULL, NULL, mqtt_close, inst);
 			if (hook == 0) {
 				error("Cannot register mqtt");
 			}
@@ -299,11 +310,10 @@ int mqtt_publish(mqtt_t inst, char* topic, char* payload) {
 	return rval;
 }
 
-/*
 int mqtt_subscribe(mqtt_t inst, char* topic) {
 	int rval;
 	int qos = 0;
-	int mid;
+	int mid = 0;
 
 	rval = mosquitto_subscribe(inst->mosq, &mid, topic, qos);
 	if (rval != MOSQ_ERR_SUCCESS) {
@@ -313,5 +323,4 @@ int mqtt_subscribe(mqtt_t inst, char* topic) {
 
 	return rval;
 }
-*/
 

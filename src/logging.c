@@ -41,7 +41,7 @@ int logging_init(int to_syslog, int verbose, char* ident, int facility) {
 	logging.verbose = verbose;
 	if (0 != to_syslog) {
 		openlog(ident, 0, facility);
-syslog(LOG_ERR, "DSMRd started");
+		syslog(LOG_ERR, "DSMRd started");
 		logging.to_syslog = 1;
 	}
 	return 0;
@@ -73,13 +73,13 @@ void warning(const char* fmt, ...) {
 	va_list ap;
 
 	va_start(ap, fmt);
-	if (0 == logging.to_syslog) {
-		if (logging.verbose > 0) {
+	if (logging.verbose > 0) {
+		if (0 == logging.to_syslog) {
 			(void) snprintf(buf, sizeof(buf), "W: %s\n", fmt);
 			(void) vprintf(buf, ap);
+		} else {
+			vsyslog(LOG_WARNING, fmt, ap);
 		}
-	} else {
-		vsyslog(LOG_WARNING, fmt, ap);
 	}
 	va_end(ap);
 }
@@ -89,13 +89,13 @@ void info(const char* fmt, ...) {
 	va_list ap;
 
 	va_start(ap, fmt);
-	if (0 == logging.to_syslog) {
-		if (logging.verbose > 1) {
+	if (logging.verbose > 1) {
+		if (0 == logging.to_syslog) {
 			(void) snprintf(buf, sizeof(buf), "I: %s\n", fmt);
 			(void) vprintf(buf, ap);
+		} else {
+			vsyslog(LOG_INFO, fmt, ap);
 		}
-	} else {
-		vsyslog(LOG_INFO, fmt, ap);
 	}
 	va_end(ap);
 }
@@ -105,13 +105,13 @@ void debug1(const char* file, int line, const char* fmt, ...) {
 	va_list ap;
 
 	va_start(ap, fmt);
-	if (0 == logging.to_syslog) {
-		if (logging.verbose > 2) {
+	if (logging.verbose > 2) {
+		if (0 == logging.to_syslog) {
 			(void) snprintf(buf, sizeof(buf), "D: %s#%d: %s\n", file, line, fmt);
 			(void) vprintf(buf, ap);
+		} else {
+			vsyslog(LOG_DEBUG, fmt, ap);
 		}
-	} else {
-		vsyslog(LOG_DEBUG, fmt, ap);
 	}
 	va_end(ap);
 }

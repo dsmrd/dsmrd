@@ -236,8 +236,8 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len) {
 						(void) regsubstr(inst->server.request_method, sizeof(inst->server.request_method), inst->buf, pmatch, 1);
 						(void) regsubstr(inst->server.request_uri, sizeof(inst->server.request_uri), inst->buf, pmatch, 2);
 
-						debug("METHOD='%s'", inst->server.request_method);
-						debug("RESOURCE='%s'", inst->server.request_uri);
+						//debug("METHOD='%s'", inst->server.request_method);
+						//debug("RESOURCE='%s'", inst->server.request_uri);
 					}
 				}
 				break;
@@ -264,7 +264,7 @@ static int http_decoder_read(http_decoder_t inst, char* buf, ssize_t len) {
 				}
 				break;
 			case HANDLE_REQUEST:
-				debug("REQUEST FINISHED");
+				//debug("REQUEST FINISHED");
 				(void) inst->callback(inst->data, inst);
 				inst->len = 0;
 				break;
@@ -315,7 +315,7 @@ static int handler_callback(void* data, http_decoder_t decoder) {
 	rbtree_t resource;
 	struct resource_info* rinfo;
 
-	debug("Served %s %s", decoder->server.request_method, decoder->server.request_uri);
+	//debug("Served %s %s", decoder->server.request_method, decoder->server.request_uri);
 
 	resource = rbtree_get(inst->resources, decoder->server.request_uri);
 	if (resource == NULL) {
@@ -393,7 +393,7 @@ static int handler_read(void* data) {
 	char buf[4096];
 	int rval = 0;
 
-	debug("Handler read");
+	//debug("Handler read");
 
 	len = read(inst->fd, buf, sizeof(buf)-1);
 	if (len < 1) {

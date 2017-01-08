@@ -36,16 +36,16 @@ struct http_server_vars_struct_t {
 
 typedef struct struct_handler_t* handler_t;
 
-/*@null@*/ handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr);
+typedef int (*handler_callback_t)(handler_t inst, http_server_vars_t server, void* data);
+
+/*@null@*/ handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr);
 int handler_open(handler_t inst, dispatch_t dis);
 //int handler_read(void* data);
 //int handler_close(void* data);
 int handler_get_fd(handler_t inst);
 int http_write_response(handler_t inst, int status, char* content);
-void handler_register_resource(handler_t inst, char* resource, char* method,
-        int (*cb)(handler_t inst, http_server_vars_t server, void* data, dsmr_t dsmr), /*@null@*/ void* data);
-void handler_register_default(handler_t inst,
-		int (*cb)(handler_t inst, http_server_vars_t server, void* data), /*@null@*/ void* data);
+void handler_register_resource(handler_t inst, char* resource, char* method, handler_callback_t cb, /*@null@*/ void* data);
+void handler_register_default(handler_t inst, handler_callback_t cb, /*@null@*/ void* data);
 
 #endif // HTTP_H
 

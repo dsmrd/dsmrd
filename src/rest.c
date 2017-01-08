@@ -34,6 +34,9 @@
 #include "options.h"
 
 
+static dsmr_t dsmr;
+
+
 static int http_get_file(handler_t handler, http_server_vars_t server, /*@unused@*/ void* data) {
 	char index[PATH_MAX];
 	char buf[1024];
@@ -89,7 +92,7 @@ static int http_get_file(handler_t handler, http_server_vars_t server, /*@unused
 	return rval;
 }
 
-static int http_get_obis1(handler_t handler, /*@unused@*/ http_server_vars_t method, void* data, dsmr_t dsmr) {
+static int http_get_obis1(handler_t handler, /*@unused@*/ http_server_vars_t method, void* data) {
 	static char buf[1024] = "x";
 	obis_object_t object;
 
@@ -103,7 +106,7 @@ static int http_get_obis1(handler_t handler, /*@unused@*/ http_server_vars_t met
 	return http_write_response(handler, 200, buf);
 }
 
-static int http_get_obis2(handler_t handler, /*@unused@*/ http_server_vars_t method, void* data, dsmr_t dsmr) {
+static int http_get_obis2(handler_t handler, /*@unused@*/ http_server_vars_t method, void* data) {
 	static char buf[1024] = "x";
 	obis_object_t object;
 
@@ -117,7 +120,7 @@ static int http_get_obis2(handler_t handler, /*@unused@*/ http_server_vars_t met
 	return http_write_response(handler, 200, buf);
 }
 
-static int http_get_obis(handler_t handler, /*@unused@*/ http_server_vars_t method, void* data, dsmr_t dsmr) {
+static int http_get_obis(handler_t handler, /*@unused@*/ http_server_vars_t method, void* data) {
 	static char buf[1024] = "x";
 	obis_object_t object;
 
@@ -154,12 +157,12 @@ static int http_get_obis(handler_t handler, /*@unused@*/ http_server_vars_t meth
 	return http_write_response(handler, 200, buf);
 }
 
-static int http_get_api(handler_t handler, /*@unused@*/ http_server_vars_t method, /*@unused@*/ void* data, /*@unused@*/ dsmr_t dsmr) {
+static int http_get_api(handler_t handler, /*@unused@*/ http_server_vars_t method, /*@unused@*/ void* data) {
 	char* buf = "[{\"version\":3}]";
 	return http_write_response(handler, 200, buf);
 }
 
-static int http_get_devices(handler_t handler, /*@unused@*/ http_server_vars_t method, /*@unused@*/ void* data, /*@unused@*/ dsmr_t dsmr) {
+static int http_get_devices(handler_t handler, /*@unused@*/ http_server_vars_t method, /*@unused@*/ void* data) {
 	char* buf = "[ { \"0\": 0 }, { \"1\": 1 }, { \"2\": 2 }, { \"3\": 3 }, { \"4\": 4 } ]";
 	return http_write_response(handler, 200, buf);
 }
@@ -167,7 +170,7 @@ static int http_get_devices(handler_t handler, /*@unused@*/ http_server_vars_t m
 struct {
 	char* resource;
 	char* method;
-	int (*callback)(handler_t, http_server_vars_t, void*, dsmr_t);
+	handler_callback_t callback;
 	char* data;
 } resource_table[] = {
 	{ "/api",                                       "GET", http_get_api,     OBIS_VERSION },
@@ -223,7 +226,11 @@ struct {
 	{ "/api/devices/4/phases/0/delivered",          "GET", http_get_obis2,   OBIS_DEVICE4_LAST_5MIN_VALUE },
 };
 
-void rest_init(handler_t handler) {
+void rest_init(dsmr_t d) {
+	dsmr = d;
+}
+
+void rest_open(handler_t handler) {
 	int i;
 
 	handler_register_default(handler, http_get_file, NULL);

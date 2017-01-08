@@ -38,13 +38,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "logging.h"
-#include "dsmr.h"
 #include "dispatch.h"
 #include "accept.h"
 #include "http.h"
 #include "options.h"
 #include "util.h"
-#include "rest.h"
 
 
 typedef enum {
@@ -85,12 +83,11 @@ struct struct_handler_t {
 	rbtree_t resources;
 	int (*default_callback)();
 	void* default_callback_data;
-	dsmr_t dsmr;
 	dispatch_t dis;
 };
 
 struct resource_info {
-	int (*callback)(handler_t inst, http_server_vars_t server, void* data, dsmr_t dsmr);
+	handler_callback_t callback;
 	void* data;
 };
 
@@ -325,7 +322,7 @@ static int handler_callback(void* data, http_decoder_t decoder) {
 		if (rinfo == NULL) {
 			rval = http_write_response(inst, HTTP_RESPONSE_CODE_METHOD_NOT_ALLOWED, "Method Not Allowed");
 		} else {
-			rval = rinfo->callback(inst, &decoder->server, rinfo->data, inst->dsmr);
+			rval = rinfo->callback(inst, &decoder->server, rinfo->data);
 		}
 	}
 
@@ -339,7 +336,7 @@ static void rbtree_free(void* a) { rbtree_exit(a); }
 static void resource_free(void* a) { free(a); }
 
 void handler_register_resource(handler_t inst, char* resource, char* method,
-		int (*cb)(handler_t inst, http_server_vars_t server, void* data, dsmr_t dsmr), /*@null@*/ /*@shared@*/ void* data) {
+		handler_callback_t cb, /*@null@*/ /*@shared@*/ void* data) {
 	rbtree_t m;
 	struct resource_info* info;
 
@@ -360,18 +357,15 @@ void handler_register_default(handler_t inst,
 	inst->default_callback_data = data;
 }
 
-handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr, dsmr_t dsmr) {
+handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr) {
 	handler_t inst;
 
 	inst = (handler_t) calloc(sizeof(struct struct_handler_t), 1);
 	if (inst != NULL) {
 		inst->fd = newsockfd;
 		inst->addr = cli_addr;
-		inst->dsmr = dsmr;
 
 		inst->resources = rbtree_init(string_less_then, string_equals, string_free, rbtree_free);
-
-		rest_init(inst);
 	}
 
 	debug("Handler init");

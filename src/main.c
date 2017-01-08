@@ -39,6 +39,7 @@
 #include "daemon.h"
 #include "mqtt.h"
 #include "stats.h"
+#include "rest.h"
 
 
 static struct struct_dsmr_t dsmr;
@@ -206,7 +207,8 @@ static int decoder(char* buf, ssize_t sz) {
 }
 
 static int acc_cb(dispatch_t dis, int newsockfd, struct sockaddr_in cli_addr, void* data) {
-	handler_t hdlr = handler_init(newsockfd, cli_addr, (dsmr_t) data);
+	handler_t hdlr = handler_init(newsockfd, cli_addr);
+	rest_open(hdlr);
 	handler_open(hdlr, dis);
 	return 0;
 }
@@ -256,6 +258,7 @@ int main(int argc, char* argv[]) {
 	(void) dsmr_init(dsmr_handle, &dsmr);
 	//ava = avahi_init(options->dnssd_name);
 	//m = mqtt_init();
+	rest_init(&dsmr);
 
 	dis = dispatch_init();
 

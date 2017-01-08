@@ -24,8 +24,10 @@
 #include <config.h>
 #endif
 #include "http.h"
+#include "dsmr.h"
 
-void rest_init(handler_t);
+void rest_init(dsmr_t);
+void rest_open(handler_t);
 
 #endif // REST_H
 

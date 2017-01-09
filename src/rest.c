@@ -226,16 +226,19 @@ struct {
 	{ "/api/devices/4/phases/0/delivered",          "GET", http_get_obis2,   OBIS_DEVICE4_LAST_5MIN_VALUE },
 };
 
-void rest_init(dsmr_t d) {
+int rest_init(dsmr_t d) {
 	dsmr = d;
+	return 0;
 }
 
-void rest_open(handler_t handler) {
+int rest_register(handler_t handler) {
 	int i;
 
 	handler_register_default(handler, http_get_file, NULL);
 	for (i=0; i<(sizeof(resource_table)/sizeof(resource_table[0])); i++) {
 		handler_register_resource(handler, resource_table[i].resource, resource_table[i].method, resource_table[i].callback, resource_table[i].data);
 	}
+
+	return 0;
 }
 

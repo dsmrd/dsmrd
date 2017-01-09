@@ -206,10 +206,13 @@ static int decoder(char* buf, ssize_t sz) {
 	return dsmr_decode(buf, sz);
 }
 
-static int acc_cb(dispatch_t dis, int newsockfd, struct sockaddr_in cli_addr, void* data) {
-	handler_t hdlr = handler_init(newsockfd, cli_addr);
-	rest_open(hdlr);
+static int accept_rest_cb(dispatch_t dis, int newsockfd, struct sockaddr_in cli_addr, void* data) {
+	handler_t hdlr;
+
+	hdlr = handler_init(newsockfd, cli_addr);
+	rest_register(hdlr);
 	handler_open(hdlr, dis);
+
 	return 0;
 }
 
@@ -264,7 +267,7 @@ int main(int argc, char* argv[]) {
 
 	//mqtt_open(m, dis, options->mqtt_name, options->mqtt_host, options->mqtt_port, 10);
 
-	acc = accept_init(options->port, acc_cb, &dsmr);
+	acc = accept_init(options->port, accept_rest_cb, &dsmr);
 	accept_open(acc, dis);
 
 	(void) serial_open(ser, dis);

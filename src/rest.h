@@ -26,8 +26,8 @@
 #include "http.h"
 #include "dsmr.h"
 
-void rest_init(dsmr_t);
-void rest_open(handler_t);
+int rest_init(dsmr_t);
+int rest_register(handler_t);
 
 #endif // REST_H
 

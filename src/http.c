@@ -76,19 +76,18 @@ struct struct_http_decoder_t {
 	/*@null@*/ /*@shared@*/ void* data;
 };
 
+struct resource_info {
+	handler_callback_t callback;
+	void* data;
+};
+
 struct struct_handler_t {
 	int fd;
 	struct sockaddr_in addr;
 	http_decoder_t decoder;
 	rbtree_t resources;
-	int (*default_callback)();
-	void* default_callback_data;
+	struct resource_info default_callback;
 	dispatch_t dis;
-};
-
-struct resource_info {
-	handler_callback_t callback;
-	void* data;
 };
 
 typedef enum {
@@ -316,7 +315,7 @@ static int handler_callback(void* data, http_decoder_t decoder) {
 
 	resource = rbtree_get(inst->resources, decoder->server.request_uri);
 	if (resource == NULL) {
-		rval = inst->default_callback(inst, &decoder->server, inst->default_callback_data);
+		rval = inst->default_callback.callback(inst, &decoder->server, inst->default_callback.data);
 	} else {
 		rinfo = (struct resource_info*) rbtree_get(resource, decoder->server.request_method);
 		if (rinfo == NULL) {
@@ -351,10 +350,9 @@ void handler_register_resource(handler_t inst, char* resource, char* method,
 	rbtree_put(m, method, info);
 }
 
-void handler_register_default(handler_t inst,
-		int (*cb)(handler_t inst, http_server_vars_t server, void* data), /*@null@*/ /*@shared@*/ void* data) {
-	inst->default_callback = cb;
-	inst->default_callback_data = data;
+void handler_register_default(handler_t inst, handler_callback_t cb, /*@null@*/ /*@shared@*/ void* data) {
+	inst->default_callback.callback = cb;
+	inst->default_callback.data = data;
 }
 
 handler_t handler_init(int newsockfd, struct sockaddr_in cli_addr) {

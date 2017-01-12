@@ -24,14 +24,39 @@ AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_HEADERS([config.h])
 
+# Conditionals
+AC_ARG_ENABLE([dns-sd],
+[  --disable-dns-sd        disable DNS-SD autodiscovery (enabled by default, needs Avahi)],
+[case "${enableval}" in
+  no)  ena_dns_sd=false ;;
+  yes) ena_dns_sd=true ;;
+  *) AC_MSG_ERROR([bad value ${enableval} for --enable-dns-sd]) ;;
+esac], [ena_dns_sd=true])
+AM_CONDITIONAL([FEATURE_DNS_SD], [test x$ena_dns_sd = xtrue])
+AM_COND_IF([FEATURE_DNS_SD], [AC_DEFINE([FEATURE_DNS_SD], [1], [Define to 1 to enable feature DNS-SD.])])
+
+AC_ARG_ENABLE([mqtt],
+[  --disable-mqtt          disable MQTT publish/subscribe (enabled by default, needs Mosquitto)],
+[case "${enableval}" in
+  no)  ena_mqtt=false ;;
+  yes) ena_mqtt=true ;;
+  *) AC_MSG_ERROR([bad value ${enableval} for --enable-mqtt]) ;;
+esac], [ena_mqtt=true])
+AM_CONDITIONAL([FEATURE_MQTT], [test x$ena_mqtt = xtrue])
+AM_COND_IF([FEATURE_MQTT], [AC_DEFINE([FEATURE_MQTT], [1], [Define to 1 to enable feature MQTT.])])
+
 # Checks for programs.
 AC_PROG_CC
 
 # Checks for libraries.
 AC_SEARCH_LIBS([cos], [m])
-AC_CHECK_LIB([avahi-common], [avahi_free])
-AC_CHECK_LIB([avahi-client], [avahi_client_free])
-AC_CHECK_LIB([mosquitto], [mosquitto_socket])
+AM_COND_IF([FEATURE_DNS_SD], [
+		AC_CHECK_LIB([avahi-common], [avahi_free], [], [AC_MSG_ERROR([No avahi-common library found])])
+		AC_CHECK_LIB([avahi-client], [avahi_client_free], [], [AC_MSG_ERROR([No avahi-client library found])])
+])
+AM_COND_IF([FEATURE_MQTT], [
+		AC_CHECK_LIB([mosquitto], [mosquitto_socket], [], [AC_MSG_ERROR([No mosquitto library found])])
+])
 AC_CHECK_LIB([sqlite3], [sqlite3_open])
 
 # Checks for header files.

@@ -43,16 +43,20 @@ dsmrd_SOURCES += crc16.h
 dsmrd_SOURCES += crc16.c
 dsmrd_SOURCES += ini.h
 dsmrd_SOURCES += ini.c
+if FEATURE_DNS_SD
 dsmrd_SOURCES += dnssd.h
 dsmrd_SOURCES += dnssd.c
+endif
 dsmrd_SOURCES += list.h
 dsmrd_SOURCES += list.c
 dsmrd_SOURCES += rbtree.h
 dsmrd_SOURCES += rbtree.c
 dsmrd_SOURCES += rest.h
 dsmrd_SOURCES += rest.c
+if FEATURE_MQTT
 dsmrd_SOURCES += mqtt.h
 dsmrd_SOURCES += mqtt.c
+endif
 dsmrd_SOURCES += stats.h
 dsmrd_SOURCES += stats.c
 

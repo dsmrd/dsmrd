@@ -35,6 +35,7 @@ dispatch_hook_t dispatch_register(dispatch_t dis, int fd, /*@null@*/ int (readcb
 int dispatch_unregister_for_data(dispatch_t dis, void* inst);
 int dispatch_unregister(dispatch_t dis, dispatch_hook_t inst);
 dispatch_timer_t dispatch_create_timer(dispatch_t inst, int usec, void (*cb)(void*), void* data);
+dispatch_timer_t dispatch_create_one_shot(dispatch_t inst, const struct timeval* expire, void (*cb)(void*), void* data);
 int dispatch_remove_timer(dispatch_t inst, dispatch_timer_t t);
 void dispatch_interval2timeval(dispatch_interval_t ival, /*@out@*/ struct timeval* tv);
 dispatch_interval_t dispatch_timeval2interval(struct timeval* tv);

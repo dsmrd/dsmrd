@@ -65,7 +65,8 @@ struct struct_dispatch_t {
 
 struct dispatch_timer_struct_t {
 	struct timeval expire;
-	struct timeval reload;
+	struct timeval interval;
+	int reload;
 	void (*cb)(void*);
 	/*@null@*/ /*@shared@*/ void* data;
 };
@@ -89,7 +90,9 @@ void termination_handler(int signum) {
 }
 
 static bool ptrcmp(const void* a, const void* b) {
-	return !(a == b);
+	bool rval;
+	rval = !(a == b);
+	return rval;
 }
 
 void dispatch_interval2timeval(dispatch_interval_t ival, /*@out@*/ struct timeval* tv) {
@@ -101,22 +104,21 @@ dispatch_interval_t dispatch_timeval2interval(struct timeval* tv) {
 	return tv->tv_sec * 1000000 + tv->tv_usec;
 }
 
-/*@null@*/ static dispatch_timer_t dispatch_timer_init(dispatch_interval_t ival, void (*cb)(void*), /*@null@*/ void* data) {
-	struct timeval interval;
-	struct timeval now;
+/*@null@*/ static dispatch_timer_t dispatch_timer_init(struct timeval* expire, struct timeval* interval, void (*cb)(void*), /*@null@*/ void* data) {
 	dispatch_timer_t inst;
 
 	inst = (dispatch_timer_t) calloc(sizeof(*inst), 1);
 	if (inst == NULL) {
 		error("Cannot allocate timer");
 	} else {
-		(void) gettimeofday(&now, NULL);
-		dispatch_interval2timeval(ival, &interval);
-		timeradd(&now, &interval, &(inst->expire));
-		inst->reload = interval;
+		inst->expire = *expire;
+		if (interval != NULL) {
+			inst->interval = *interval;
+			inst->reload = 1;
+		}
 		inst->cb = cb;
 		inst->data = data;
-		debug("(%p) Timer interval = %d (us)", inst, inst->reload);
+		//debug("(%p) Timer interval = %d (us)", inst, inst->interval);
 	}
 
 	return inst;
@@ -286,17 +288,20 @@ int dispatch_unregister_for_data(dispatch_t inst, void* data) {
 	return 0;
 }
 
-static dispatch_interval_t dispatch_timer_evaluate(dispatch_timer_t inst) {
+static dispatch_interval_t dispatch_timer_evaluate(dispatch_t dis, dispatch_timer_t inst) {
 	struct timeval now;
 	struct timeval diff;
 
 	(void) gettimeofday(&now, NULL);
 
 	if (timercmp(&inst->expire, &now, <)) {
-		debug("(%p) Timer expiry, calling callback", inst);
 		inst->cb(inst->data);
-		timeradd(&inst->expire, &inst->reload, &inst->expire);
-		debug("(%p) Reloading timer %d (us)", inst, dispatch_timeval2interval(&inst->expire));
+		if (inst->reload) {
+			timeradd(&inst->expire, &inst->interval, &inst->expire);
+		} else {
+			void* v;
+			v = list_remove_by_value(dis->timers, inst);
+		}
 	}
 
 	timersub(&inst->expire, &now, &diff);
@@ -304,17 +309,33 @@ static dispatch_interval_t dispatch_timer_evaluate(dispatch_timer_t inst) {
 }
 
 dispatch_timer_t dispatch_create_timer(dispatch_t inst, int usec, void (*cb)(void*), void* data) {
-	dispatch_timer_t t;
+	dispatch_timer_t rval;
+	struct timeval interval;
+	struct timeval now;
+	struct timeval expire;
 
-	t = dispatch_timer_init(usec, cb, data);
-	list_add(inst->timers, t);
+	(void) gettimeofday(&now, NULL);
+	dispatch_interval2timeval(usec, &interval);
+	timeradd(&now, &interval, &expire);
 
-	return t;
+	rval = dispatch_timer_init(&expire, &interval, cb, data);
+	list_add(inst->timers, rval);
+
+	return rval;
+}
+
+dispatch_timer_t dispatch_create_one_shot(dispatch_t inst, const struct timeval* expire, void (*cb)(void*), void* data) {
+	dispatch_timer_t rval;
+
+	rval = dispatch_timer_init(expire, NULL, cb, data);
+	list_add(inst->timers, rval);
+
+	return rval;
 }
 
 int dispatch_remove_timer(dispatch_t inst, dispatch_timer_t t) {
-	list_remove_by_value(inst->timers, t);
-
+	void* v;
+	v = list_remove_by_value(inst->timers, t);
 	return 0;
 }
 
@@ -342,7 +363,7 @@ static dispatch_interval_t dispatch_handle_timers(dispatch_t inst) {
 	timer_list = _dispatch_list_copy(inst->timers);
 	timer_iter = list_head(timer_list);
 	while (!iter_eof(timer_iter)) {
-		to = dispatch_timer_evaluate(iter_get(timer_iter));
+		to = dispatch_timer_evaluate(inst, iter_get(timer_iter));
 		mto = min(mto, to);
 		iter_next(timer_iter);
 	}

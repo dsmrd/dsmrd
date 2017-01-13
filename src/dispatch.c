@@ -104,7 +104,7 @@ dispatch_interval_t dispatch_timeval2interval(struct timeval* tv) {
 	return tv->tv_sec * 1000000 + tv->tv_usec;
 }
 
-/*@null@*/ static dispatch_timer_t dispatch_timer_init(struct timeval* expire, struct timeval* interval, void (*cb)(void*), /*@null@*/ void* data) {
+/*@null@*/ static dispatch_timer_t dispatch_timer_init(const struct timeval* expire, const struct timeval* interval, void (*cb)(void*), /*@null@*/ void* data) {
 	dispatch_timer_t inst;
 
 	inst = (dispatch_timer_t) calloc(sizeof(*inst), 1);
@@ -299,8 +299,7 @@ static dispatch_interval_t dispatch_timer_evaluate(dispatch_t dis, dispatch_time
 		if (inst->reload) {
 			timeradd(&inst->expire, &inst->interval, &inst->expire);
 		} else {
-			void* v;
-			v = list_remove_by_value(dis->timers, inst);
+			(void) list_remove_by_value(dis->timers, inst);
 		}
 	}
 
@@ -334,8 +333,7 @@ dispatch_timer_t dispatch_create_one_shot(dispatch_t inst, const struct timeval*
 }
 
 int dispatch_remove_timer(dispatch_t inst, dispatch_timer_t t) {
-	void* v;
-	v = list_remove_by_value(inst->timers, t);
+	(void) list_remove_by_value(inst->timers, t);
 	return 0;
 }
 

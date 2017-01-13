@@ -366,6 +366,7 @@ static dispatch_interval_t dispatch_handle_timers(dispatch_t inst) {
 		iter_next(timer_iter);
 	}
 	iter_exit(timer_iter);
+	list_exit(timer_list);
 
 	return mto;
 }

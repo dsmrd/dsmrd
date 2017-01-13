@@ -32,19 +32,25 @@
 #include "options.h"
 #include "dsmr.h"
 #include "serial.h"
+#ifdef FEATURE_DNS_SD
 #include "dnssd.h"
+#endif // FEATURE_DNS_SD
 #include "dispatch.h"
 #include "accept.h"
 #include "http.h"
 #include "daemon.h"
+#ifdef FEATURE_MQTT
 #include "mqtt.h"
+#endif // FEATURE_MQTT
 #include "stats.h"
 #include "rest.h"
 
 
 static struct struct_dsmr_t dsmr;
 
-//static mqtt_t m;
+#ifdef FEATURE_MQTT
+static mqtt_t m;
+#endif // FEATURE_MQTT
 
 static stats_t stats;
 static stats_data_t stats_electr_to_client_tariff1_hourly;
@@ -98,7 +104,7 @@ static void cb(void* key, void* value) {
 }
 */
 
-/*
+#ifdef FEATURE_MQTT
 static int publish(dsmr_t dsmr_) {
 	obis_object_t object;
 	char buf[1024];
@@ -121,7 +127,7 @@ static int publish(dsmr_t dsmr_) {
 
 	return 0;
 }
-*/
+#endif // FEATURE_MQTT
 
 static int do_stats(dsmr_t dsmr_) {
 	obis_object_t object;
@@ -195,7 +201,9 @@ static int dsmr_handle(dsmr_t dsmr_) {
 	//dsmr_print(dsmr_);
 	//rbtree_foreach(dsmr_->objects, cb);
 
-	//publish(dsmr_);
+#ifdef FEATURE_MQTT
+	publish(dsmr_);
+#endif // FEATURE_MQTT
 
 	do_stats(dsmr_);
 
@@ -220,7 +228,9 @@ int main(int argc, char* argv[]) {
 	dispatch_t dis;
 	serial_t ser;
 	accept_t acc;
-	//avahi_t ava;
+#ifdef FEATURE_DNS_SD
+	avahi_t ava;
+#endif // FEATURE_DNS_SD
 
 	printf("%s -- (C)2016 M.J. de Wit\n", PACKAGE_NAME);
 
@@ -259,24 +269,34 @@ int main(int argc, char* argv[]) {
 
 	ser = serial_init(options->tty, options->baud, options->is_tty, decoder);
 	(void) dsmr_init(dsmr_handle, &dsmr);
-	//ava = avahi_init(options->dnssd_name);
-	//m = mqtt_init();
+#ifdef FEATURE_DNS_SD
+	ava = avahi_init(options->dnssd_name);
+#endif // FEATURE_DNS_SD
+#ifdef FEATURE_MQTT
+	m = mqtt_init();
+#endif // FEATURE_MQTT
 	rest_init(&dsmr);
 
 	dis = dispatch_init();
 
-	//mqtt_open(m, dis, options->mqtt_name, options->mqtt_host, options->mqtt_port, 10);
+#ifdef FEATURE_MQTT
+	mqtt_open(m, dis, options->mqtt_name, options->mqtt_host, options->mqtt_port, 10);
+#endif // FEATURE_MQTT
 
 	acc = accept_init(options->port, accept_rest_cb, &dsmr);
 	accept_open(acc, dis);
 
 	(void) serial_open(ser, dis);
 
-	//avahi_open(ava, dis);
+#ifdef FEATURE_DNS_SD
+	avahi_open(ava, dis);
+#endif // FEATURE_DNS_SD
 
 	dispatch_handle_events(dis);
 
-	//mqtt_exit(m);
+#ifdef FEATURE_MQTT
+	mqtt_exit(m);
+#endif // FEATURE_MQTT
 
 	dispatch_close(dis);
 

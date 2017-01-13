@@ -39,10 +39,8 @@
 typedef struct ava_struct_t* avahi_t;
 
 struct AvahiTimeout {
-	struct timeval expiry;
 	AvahiTimeoutCallback callback;
 	void* userdata;
-	int enable;
 	avahi_t poll;
 	dispatch_timer_t timer;
 };
@@ -56,6 +54,7 @@ struct AvahiWatch {
 	int (*exceptcb)(void*);
 	void* userdata;
 	dispatch_t dispatch;
+	dispatch_hook_t hook;
 };
 
 struct ava_struct_t {
@@ -72,7 +71,7 @@ struct ava_struct_t {
 static void create_services(AvahiClient* c, avahi_t i);
 
 static void entry_group_callback(AvahiEntryGroup* group, AvahiEntryGroupState state, void* userdata) {
-	avahi_t inst = NULL;
+	avahi_t inst = (avahi_t) userdata;
 	char* n;
 
 	switch (state) {
@@ -106,11 +105,13 @@ static void create_services(AvahiClient* c, avahi_t inst) {
 
 	info("Adding DNS-SD service '%s'", inst->name);
 
-	if ((ret = avahi_entry_group_add_service(inst->group, AVAHI_IF_UNSPEC, AVAHI_PROTO_INET, 0, inst->name, "_http._tcp", NULL, NULL, 8888, NULL)) < 0) {
+	ret = avahi_entry_group_add_service(inst->group, AVAHI_IF_UNSPEC, AVAHI_PROTO_INET, 0, inst->name, "_http._tcp", NULL, NULL, 8888, NULL);
+	if (ret < 0) {
 		error("Failed to add _http._tcp service: %s", avahi_strerror(ret));
 		dispatch_quit(inst->dispatch);
 	} else {
-		if ((ret = avahi_entry_group_commit(inst->group)) < 0) {
+		ret = avahi_entry_group_commit(inst->group);
+		if (ret < 0) {
 			error("Failed to commit entry group: %s", avahi_strerror(ret));
 			dispatch_quit(inst->dispatch);
 		}
@@ -169,30 +170,26 @@ static void modify_callback(AvahiTimeout* e, void* userdata) {
 
 int avahi_watch_readcb(void* userdata) {
 	AvahiWatch* inst = (AvahiWatch*) userdata;
-	debug("avahi_watch_readcb");
 	inst->callback(inst, inst->fd, AVAHI_WATCH_IN, inst->userdata);
 	return 0;
 }
 
 int avahi_watch_writecb(void* userdata) {
 	AvahiWatch* inst = (AvahiWatch*) userdata;
-	debug("avahi_watch_writecb");
 	inst->callback(inst, inst->fd, AVAHI_WATCH_OUT, inst->userdata);
 	return 0;
 }
 
 int avahi_watch_exceptcb(void* userdata) {
 	AvahiWatch* inst = (AvahiWatch*) userdata;
-	debug("avahi_watch_exceptcb");
 	inst->callback(inst, inst->fd, AVAHI_WATCH_ERR, inst->userdata);
 	return 0;
 }
 
 int avahi_watch_closecb(void* userdata) {
 	AvahiWatch* inst = (AvahiWatch*) userdata;
-	debug("avahi_watch_closecb");
 	inst->callback(inst, inst->fd, AVAHI_WATCH_HUP, inst->userdata);
-	dispatch_unregister_for_data(inst->dispatch, inst);
+	dispatch_unregister(inst->dispatch, inst->hook);
 	return 0;
 }
 
@@ -210,11 +207,9 @@ static char* watchevent2str(AvahiWatchEvent event) {
 
 static AvahiWatch* avahi_watch_new(const AvahiPoll* poll, int fd, AvahiWatchEvent event, AvahiWatchCallback callback, void* userdata) {
 	AvahiWatch* inst;
-	dispatch_hook_t hook;
 	avahi_t ava = (avahi_t) poll->userdata;
 
-	debug("avahi_watch_new %p %s %p %p", poll, watchevent2str(event), callback, userdata);
-	inst = (AvahiWatch*) malloc(sizeof(AvahiWatch));
+	inst = (AvahiWatch*) calloc(sizeof(AvahiWatch), 1);
 	inst->fd = fd;
 	inst->event = event;
 	inst->callback = callback;
@@ -228,18 +223,16 @@ static AvahiWatch* avahi_watch_new(const AvahiPoll* poll, int fd, AvahiWatchEven
 		default:
 							  error("Wrong event?");
 	}
-	hook = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, inst);
-	assert(hook != 0);
+	inst->hook = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, inst);
+	assert(inst->hook != 0);
 
 	return inst;
 }
 
 static void avahi_watch_update(AvahiWatch* inst, AvahiWatchEvent event) {
 	int rval;
-	dispatch_hook_t hook;
 
-	debug("avahi_watch_update %s", watchevent2str(event));
-	rval = dispatch_unregister_for_data(inst->dispatch, inst);
+	rval = dispatch_unregister(inst->dispatch, inst->hook);
 	if (rval != 0) {
 		error("Cannot unregister");
 		dispatch_quit(inst->dispatch);
@@ -252,8 +245,8 @@ static void avahi_watch_update(AvahiWatch* inst, AvahiWatchEvent event) {
 			default:
 								  error("Wrong event?");
 		}
-		hook = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, inst);
-		if (hook == 0) {
+		inst->hook = dispatch_register(inst->dispatch, inst->fd, inst->readcb, inst->writecb, inst->exceptcb, avahi_watch_closecb, inst);
+		if (inst->hook == 0) {
 			error("Cannot register");
 			dispatch_quit(inst->dispatch);
 		}
@@ -273,88 +266,44 @@ static void avahi_watch_free(AvahiWatch* w) {
 
 static void timeout_callback(void* data) {
 	AvahiTimeout* inst = (AvahiTimeout*) data;
-	debug("Timeout");
 	inst->callback(inst, inst->userdata);
 }
 
 static AvahiTimeout* avahi_timeout_new(const AvahiPoll* poll, const struct timeval* tv, AvahiTimeoutCallback callback, void* userdata) {
 	AvahiTimeout* inst;
 	avahi_t ava = (avahi_t) poll->userdata;
-	dispatch_interval_t ival;
 
-	inst = (AvahiTimeout*) malloc(sizeof(AvahiTimeout));
+	inst = (AvahiTimeout*) calloc(sizeof(AvahiTimeout), 1);
 	if (inst == NULL) {
 		error("Cannot allocate timeout");
 		dispatch_quit(ava->dispatch);
 	} else {
 		inst->callback = callback;
 		inst->userdata = userdata;
-		if (tv) {
-			inst->enable = 1;
-			inst->expiry = *tv;
-
-			{
-				struct timeval now;
-				struct timeval e;
-				(void) gettimeofday(&now, NULL);
-				timersub(tv, &now, &e);
-				ival = dispatch_timeval2interval(&e);
-				//debug("timer_sub %d.%06d", e.tv_sec, e.tv_usec);
-			}
-
-			inst->timer = dispatch_create_timer(ava->dispatch, ival, timeout_callback, inst);
-			debug("%p: Create timer: expire = %d us", inst->timer, ival);
-		} else {
-			inst->enable = 0;
-			inst->timer = NULL;
-			debug("%p: Create timer: disabled", inst->timer);
+		if (tv && !((tv->tv_sec == 0) && (tv->tv_usec == 0))) {
+			inst->timer = dispatch_create_one_shot(ava->dispatch, tv, timeout_callback, inst);
 		}
 		inst->poll = ava;
 
 		list_add(ava->timeouts, inst);
-
-		//if (tv) {
-			//debug("avahi_timeout_new %p %p tv_sec=%d tv_usec=%d", inst, ava, tv->tv_sec, tv->tv_usec);
-		//} else {
-			//debug("avahi_timeout_new inst=%p ava=%p tv=%p", inst, ava, tv);
-		//}
 	}
 
 	return inst;
 }
 
 static void avahi_timeout_update(AvahiTimeout* inst, const struct timeval* tv) {
-	dispatch_interval_t ival;
-	debug("avahi_timeout_update %p", inst);
+	if (inst->timer != NULL) {
+		dispatch_remove_timer(inst->poll->dispatch, inst->timer);
+	}
 
-	dispatch_remove_timer(inst->poll->dispatch, inst->timer);
-
-	if (tv) {
-		inst->enable = 1;
-		inst->expiry = *tv;
-
-		{
-			struct timeval now;
-			struct timeval e;
-			(void) gettimeofday(&now, NULL);
-			timersub(tv, &now, &e);
-			ival = dispatch_timeval2interval(&e);
-			//debug("timer_sub %d.%06d", e.tv_sec, e.tv_usec);
-		}
-
-		inst->timer = dispatch_create_timer(inst->poll->dispatch, ival, timeout_callback, inst);
-		debug("%p: Update timer: expire = %d us", inst->timer, ival);
-	} else {
-		inst->enable = 0;
-		inst->timer = NULL;
-		debug("%p: Update timer: disabled", inst->timer);
+	if (tv && !((tv->tv_sec == 0) && (tv->tv_usec == 0))) {
+		inst->timer = dispatch_create_one_shot(inst->poll->dispatch, tv, timeout_callback, inst);
 	}
 }
 
 static void avahi_timeout_free(AvahiTimeout* inst) {
-	debug("avahi_timeout_free %p", inst);
 	dispatch_remove_timer(inst->poll->dispatch, inst->timer);
-	free(inst);
+	//free(inst);
 }
 
 static bool timeout_cmp(const void* t1, const void* t2) {
@@ -367,8 +316,8 @@ static void timeout_lree(void* t) {
 }
 
 avahi_t avahi_init(char* name) {
-	avahi_t inst = (avahi_t) calloc(sizeof(struct ava_struct_t), 1);
-	debug("avahi_init %p", inst);
+	avahi_t inst;
+	inst = (avahi_t) calloc(sizeof(struct ava_struct_t), 1);
 
 	{
 		char name[HOST_NAME_MAX];

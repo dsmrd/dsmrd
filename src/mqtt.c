@@ -42,6 +42,11 @@ struct mqtt_struct_t {
 	/*@shared@*/ dispatch_timer_t timer;
 	int connected;
 	int reconnect_timer;
+	int pub_qos;
+	bool retain;
+	int pub_mid;
+	int sub_qos;
+	int sub_mid;
 };
 
 
@@ -93,7 +98,7 @@ static void on_publish(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *o
 		/*@unused@*/ int mid) {
 	//mqtt_t inst = (mqtt_t) obj;
 
-	debug("publish... mid=%d", mid);
+	//debug("publish... mid=%d", mid);
 }
 
 static void on_message(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ void *obj,
@@ -296,12 +301,9 @@ int mqtt_open(mqtt_t inst, dispatch_t d, const char* name, const char* host, int
 
 int mqtt_publish(mqtt_t inst, char* topic, char* payload) {
 	int rval = 0;
-	int qos = 0;
-	bool retain = false;
-	int mid = 0;
 
 	if (inst->connected != 0) {
-		rval = mosquitto_publish(inst->mosq, &mid, topic, (int)strlen(payload), payload, qos, retain);
+		rval = mosquitto_publish(inst->mosq, &inst->pub_mid, topic, (int)strlen(payload), payload, inst->pub_qos, inst->retain);
 		if (rval != MOSQ_ERR_SUCCESS) {
 			error("Cannot publish: %s", mosquitto_strerror(rval));
 		}
@@ -312,10 +314,8 @@ int mqtt_publish(mqtt_t inst, char* topic, char* payload) {
 
 int mqtt_subscribe(mqtt_t inst, char* topic) {
 	int rval;
-	int qos = 0;
-	int mid = 0;
 
-	rval = mosquitto_subscribe(inst->mosq, &mid, topic, qos);
+	rval = mosquitto_subscribe(inst->mosq, &inst->sub_mid, topic, inst->sub_qos);
 	if (rval != MOSQ_ERR_SUCCESS) {
 		debug("Cannot subscribe: '%s'", mosquitto_strerror(rval));
 	}

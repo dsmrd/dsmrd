@@ -66,7 +66,7 @@ stats_t stats_init(char* name) {
 	char buf[256];
 	int rval;
 
-	inst = malloc(sizeof(*inst));
+	inst = calloc(sizeof(*inst), 1);
 
 	rval = sqlite3_open(name, &inst->db);
 	if (rval != SQLITE_OK){

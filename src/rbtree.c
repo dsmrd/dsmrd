@@ -216,7 +216,7 @@ void* rbtree_put(rbtree_t t, void* key, void* value) {
 	}
 
 	// setup new node
-	if ((x = malloc (sizeof(*x))) == 0) {
+	if ((x = calloc(sizeof(*x), 1)) == 0) {
 		printf ("insufficient memory (rbtree_put)\n");
 		exit(1);
 	}
@@ -411,7 +411,7 @@ void* rbtree_delete(rbtree_t inst, void* key) {
 rbtree_t rbtree_init(rbtree_less_then_t less_then, rbtree_equals_t equals, rbtree_free_key_t free_key, rbtree_free_value_t free_value) {
 	rbtree_t inst;
 
-	inst = (rbtree_t) malloc(sizeof(struct rbtree_struct_t));
+	inst = (rbtree_t) calloc(sizeof(struct rbtree_struct_t), 1);
 	inst->root = NIL;
 	inst->less_then = less_then;
 	inst->equals = equals;

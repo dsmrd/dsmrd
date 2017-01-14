@@ -344,7 +344,7 @@ void handler_register_resource(handler_t inst, char* resource, char* method,
 		m = rbtree_init(string_less_then, string_equals, string_free, resource_free);
 		rbtree_put(inst->resources, resource, m);
 	}
-	info = malloc(sizeof(struct resource_info));
+	info = calloc(sizeof(struct resource_info), 1);
 	info->callback = cb;
 	info->data = data;
 	rbtree_put(m, method, info);

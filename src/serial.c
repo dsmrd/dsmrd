@@ -44,6 +44,7 @@ struct struct_serial_t {
 	char device[256];
 	int is_tty;
 	dispatch_t dis;
+	dispatch_hook_t hook;
 };
 
 static struct baudmap_t {
@@ -112,7 +113,6 @@ serial_t serial_init(char* device, serial_baud_t baud, int is_tty, int (decoder)
 
 int serial_open(serial_t inst, dispatch_t dis) {
 	int rval = -1;
-	dispatch_hook_t hook;
 
 	info("Opening serial port");
 	inst->fd = open(inst->device, O_RDONLY | O_NOCTTY | O_NONBLOCK );
@@ -143,8 +143,8 @@ int serial_open(serial_t inst, dispatch_t dis) {
 			}
 		}
 
-		hook = dispatch_register(dis, inst->fd, serial_read, NULL, NULL, serial_close, inst);
-		if (hook == 0) {
+		inst->hook = dispatch_register(dis, inst->fd, serial_read, NULL, NULL, serial_close, inst);
+		if (inst->hook == 0) {
 			error("Cannot register serial port to dispatcher");
 		}
 
@@ -180,8 +180,12 @@ static int serial_read(void* data) {
 static int serial_close(void* data) {
 	serial_t inst = (serial_t) data;
 	int rval;
+	void* hook;
 
-	(void) dispatch_unregister_for_data(inst->dis, inst);
+	rval = dispatch_unregister(inst->dis, inst->hook);
+	if (rval != 0) {
+		error("Cannot unregister dispatch hook!!!");
+	}
 
 	if (inst->is_tty != 0) {
 		rval = tcsetattr(inst->fd, TCSANOW, &(inst->oldtio));

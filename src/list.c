@@ -87,7 +87,7 @@ bool iter_prev(iter_t inst);
 
 /*@null@*/ list_t list_init(list_compare_t cmp, list_free_t lfree) {
 	list_t inst;
-	inst = (list_t) malloc(sizeof(struct list_struct_t));
+	inst = (list_t) calloc(sizeof(struct list_struct_t), 1);
 	if (inst == NULL) {
 		printf("Err\n");
 	} else {
@@ -102,7 +102,7 @@ bool iter_prev(iter_t inst);
 
 /*@null@*/ static node_t node_init(void* val) {
 	node_t inst;
-	inst = (node_t) malloc(sizeof(struct node_struct_t));
+	inst = (node_t) calloc(sizeof(struct node_struct_t), 1);
 	if (inst == NULL) {
 		printf("Err\n");
 	} else {
@@ -164,7 +164,7 @@ static void list_add_node(list_t l, node_t n) {
 
 /*@null@*/ iter_t iter_init(node_t n) {
 	iter_t inst;
-	inst = (iter_t) malloc(sizeof(struct iter_struct_t));
+	inst = (iter_t) calloc(sizeof(struct iter_struct_t), 1);
 	if (inst == NULL) {
 		printf("Err\n");
 	} else {
@@ -257,9 +257,7 @@ int list_index_of(list_t inst, void* val) {
 
 /*@null@*/ static node_t list_get_node_by_value(list_t inst, void* val) {
 	node_t n = inst->head;
-	int ctr = 0;
 	while ((n != NULL) && (inst->cmp(node_get_value(n), val))) {
-		ctr++;
 		n = n->next;
 	}
 	return n;

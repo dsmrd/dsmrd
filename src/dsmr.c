@@ -205,7 +205,7 @@ static int dsmr_process() {
 				} else {
 					obis_object_t de;
 					if ((de = rbtree_get(dsmr_decoder.pkt->objects, obis_reference)) == NULL) {
-						de = (obis_object_t) malloc(sizeof(struct obis_object_struct_t));
+						de = (obis_object_t) calloc(sizeof(struct obis_object_struct_t), 1);
 						rbtree_put(dsmr_decoder.pkt->objects, strdup(obis_reference), de);
 					}
 

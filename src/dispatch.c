@@ -224,6 +224,7 @@ static void dispatch_nfds(dispatch_t inst) {
 		} while (iter_next(ihook));
 		inst->nfds = nfds+1;
 	}
+	iter_exit(ihook);
 
 	debug("(%p) Number of file-descriptors = %d", inst, inst->nfds);
 }
@@ -248,19 +249,27 @@ dispatch_hook_t dispatch_register(dispatch_t inst, int fd, int (readcb)(void*), 
 }
 
 int dispatch_unregister(dispatch_t inst, dispatch_hook_t hook) {
-	debug("(%p) Unregistering hook %p", inst, hook);
+	void* h;
+	int rval = 0;
+
+	debug("(%p) Unregistering handler %p", inst, hook);
 
 	if (hook->cb_read != NULL) { FD_CLR(hook->fd, &(inst->readfds)); }
 	if (hook->cb_write != NULL) { FD_CLR(hook->fd, &(inst->writefds)); }
 	if (hook->cb_except != NULL) { FD_CLR(hook->fd, &(inst->exceptfds)); }
 
-	(void) list_remove_by_value(inst->hooks, hook);
-
-	info("Unregistered handler %d", hook->fd);
+	h = list_remove_by_value(inst->hooks, hook);
+	if (h == NULL) {
+		error("Cannot unregister hander!!!");
+		rval = -1;
+	} else {
+		dispatch_hook_exit(hook);
+		info("Unregistered handler %d", hook->fd);
+	}
 
 	dispatch_nfds(inst);
 
-	return 0;
+	return rval;
 }
 
 int dispatch_unregister_for_data(dispatch_t inst, void* data) {

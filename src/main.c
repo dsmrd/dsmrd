@@ -110,20 +110,42 @@ static int publish(dsmr_t dsmr_) {
 	char buf[1024];
 
 	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF1);
-	snprintf(buf, sizeof(buf), "%f", object->v.f.d);
+	snprintf(buf, sizeof(buf), "%010.3f", object->v.f.d);
 	mqtt_publish(m, "/dsmrd/devices/0/tariffs/1/delivered", buf);
 
 	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF2);
-	snprintf(buf, sizeof(buf), "%f", object->v.f.d);
+	snprintf(buf, sizeof(buf), "%010.3f", object->v.f.d);
 	mqtt_publish(m, "/dsmrd/devices/0/tariffs/2/delivered", buf);
 
 	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF1);
-	snprintf(buf, sizeof(buf), "%f", object->v.f.d);
+	snprintf(buf, sizeof(buf), "%010.3f", object->v.f.d);
 	mqtt_publish(m, "/dsmrd/devices/0/tariffs/1/received", buf);
 
 	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF2);
-	snprintf(buf, sizeof(buf), "%f", object->v.f.d);
+	snprintf(buf, sizeof(buf), "%010.3f", object->v.f.d);
 	mqtt_publish(m, "/dsmrd/devices/0/tariffs/2/received", buf);
+
+	object = rbtree_get(dsmr_->objects, OBIS_DEVICE1_LAST_5MIN_VALUE);
+	snprintf(buf, sizeof(buf), "%010.3f", object->v.m.d);
+	mqtt_publish(m, "/dsmrd/devices/1/tariffs/1/received", buf);
+	snprintf(buf, sizeof(buf), "%s", ctime(&(object->v.m.t)));
+	mqtt_publish(m, "/dsmrd/devices/1/tariffs/1/timestamp", buf);
+
+	object = rbtree_get(dsmr_->objects, OBIS_DATETIME_STAMP);
+	snprintf(buf, sizeof(buf), "%s", ctime(&(object->v.m.t)));
+	mqtt_publish(m, "/dsmrd/devices/0/timestamp", buf);
+
+	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR);
+	snprintf(buf, sizeof(buf), "%d", object->v.i);
+	mqtt_publish(m, "/dsmrd/devices/0/indicator", buf);
+
+	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_POWER_DELIVERED);
+	snprintf(buf, sizeof(buf), "%f", object->v.f.d);
+	mqtt_publish(m, "/dsmrd/devices/0/delivered", buf);
+
+	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_POWER_RECEIVED);
+	snprintf(buf, sizeof(buf), "%f", object->v.f.d);
+	mqtt_publish(m, "/dsmrd/devices/0/received", buf);
 
 	return 0;
 }

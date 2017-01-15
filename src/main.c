@@ -132,7 +132,7 @@ static int publish(dsmr_t dsmr_) {
 	mqtt_publish(m, "/dsmrd/devices/1/tariffs/1/timestamp", buf);
 
 	object = rbtree_get(dsmr_->objects, OBIS_DATETIME_STAMP);
-	snprintf(buf, sizeof(buf), "%s", ctime(&(object->v.m.t)));
+	snprintf(buf, sizeof(buf), "%s", ctime(&(object->v.t)));
 	mqtt_publish(m, "/dsmrd/devices/0/timestamp", buf);
 
 	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR);

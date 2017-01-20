@@ -57,8 +57,8 @@ if FEATURE_MQTT
 dsmrd_SOURCES += mqtt.h
 dsmrd_SOURCES += mqtt.c
 endif
-dsmrd_SOURCES += stats.h
-dsmrd_SOURCES += stats.c
+dsmrd_SOURCES += database.h
+dsmrd_SOURCES += database.c
 dsmrd_SOURCES += publish.h
 dsmrd_SOURCES += publish.c
 

@@ -42,7 +42,7 @@
 #ifdef FEATURE_MQTT
 #include "mqtt.h"
 #endif // FEATURE_MQTT
-#include "stats.h"
+#include "database.h"
 #include "rest.h"
 #include "publish.h"
 

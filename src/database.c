@@ -27,7 +27,7 @@
 #include <math.h>
 #include <sqlite3.h>
 #include "logging.h"
-#include "stats.h"
+#include "database.h"
 
 
 struct stats_struct_t {

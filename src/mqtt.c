@@ -123,7 +123,7 @@ static void on_unsubscribe(/*@unused@*/ struct mosquitto *mosq, /*@unused@*/ voi
 	debug("unsubscribe... mid=%d", mid);
 }
 
-mqtt_t mqtt_init() {
+mqtt_t mqtt_init(const char* name) {
 	mqtt_t inst = NULL;
 	int rval;
 	int major = 0;
@@ -140,6 +140,11 @@ mqtt_t mqtt_init() {
 		inst = (mqtt_t) calloc(sizeof(struct mqtt_struct_t), 1);
 		if (inst == NULL) {
 			error("Cannot allocate mqtt");
+		} else {
+			inst->mosq = mosquitto_new(name, true, inst);
+			if (inst->mosq == NULL) {
+				error("Cannot create mqtt");
+			}
 		}
 	}
 
@@ -258,40 +263,35 @@ static void mqtt_misc(void* userdata) {
 	(void) mqtt_write(inst);
 }
 
-int mqtt_open(mqtt_t inst, dispatch_t d, const char* name, const char* host, int port, int keepalive) {
+int mqtt_open(mqtt_t inst, dispatch_t d, const char* host, int port, int keepalive) {
 	int rval = -1;
 	dispatch_hook_t hook;
 	int fd;
 
-	inst->mosq = mosquitto_new(name, true, inst);
-	if (inst->mosq == NULL) {
-		error("Cannot create mqtt");
+	inst->dispatch = d;
+
+	mosquitto_log_callback_set(inst->mosq, on_log);
+	mosquitto_connect_callback_set(inst->mosq, on_connect);
+	mosquitto_disconnect_callback_set(inst->mosq, on_disconnect);
+	mosquitto_publish_callback_set(inst->mosq, on_publish);
+	mosquitto_message_callback_set(inst->mosq, on_message);
+	mosquitto_subscribe_callback_set(inst->mosq, on_subscribe);
+	mosquitto_unsubscribe_callback_set(inst->mosq, on_unsubscribe);
+
+	inst->timer = dispatch_create_timer(d, 2000000, mqtt_misc, inst);
+	if (inst->timer == NULL) {
+		error("Cannot create timer");
+	}
+
+	rval = mosquitto_connect(inst->mosq, host, port, keepalive);
+	if (rval != MOSQ_ERR_SUCCESS) {
+		error("Cannot connect mqtt");
 	} else {
-		inst->dispatch = d;
+		fd = mosquitto_socket(inst->mosq);
 
-		mosquitto_log_callback_set(inst->mosq, on_log);
-		mosquitto_connect_callback_set(inst->mosq, on_connect);
-		mosquitto_disconnect_callback_set(inst->mosq, on_disconnect);
-		mosquitto_publish_callback_set(inst->mosq, on_publish);
-		mosquitto_message_callback_set(inst->mosq, on_message);
-		mosquitto_subscribe_callback_set(inst->mosq, on_subscribe);
-		mosquitto_unsubscribe_callback_set(inst->mosq, on_unsubscribe);
-
-		inst->timer = dispatch_create_timer(d, 2000000, mqtt_misc, inst);
-		if (inst->timer == NULL) {
-			error("Cannot create timer");
-		}
-
-		rval = mosquitto_connect(inst->mosq, host, port, keepalive);
-		if (rval != MOSQ_ERR_SUCCESS) {
-			error("Cannot connect mqtt");
-		} else {
-			fd = mosquitto_socket(inst->mosq);
-
-			hook = dispatch_register(d, fd, mqtt_read, NULL, NULL, mqtt_close, inst);
-			if (hook == 0) {
-				error("Cannot register mqtt");
-			}
+		hook = dispatch_register(d, fd, mqtt_read, NULL, NULL, mqtt_close, inst);
+		if (hook == 0) {
+			error("Cannot register mqtt");
 		}
 	}
 
@@ -320,6 +320,17 @@ int mqtt_subscribe(mqtt_t inst, char* topic) {
 		debug("Cannot subscribe: '%s'", mosquitto_strerror(rval));
 	}
 	assert(rval == 0);
+
+	return rval;
+}
+
+int mqtt_will(mqtt_t inst, const char* topic, const char* payload) {
+	int rval;
+
+	rval = mosquitto_will_set(inst->mosq, topic, (int)strlen(payload), payload, inst->pub_qos, inst->retain);
+	if (rval != MOSQ_ERR_SUCCESS) {
+		error("Cannot set will: %s", mosquitto_strerror(rval));
+	}
 
 	return rval;
 }

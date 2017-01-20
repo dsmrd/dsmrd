@@ -17,22 +17,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef MQTT_H
-#define MQTT_H
+#ifndef PUBLISH_H
+#define PUBLISH_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-#include "dispatch.h"
+#include "mqtt.h"
+#include "dsmr.h"
 
-typedef struct mqtt_struct_t* mqtt_t;
+int publish_init(mqtt_t m);
+int publish(mqtt_t m, dsmr_t dsmr_);
 
-/*@null@*/ mqtt_t mqtt_init(const char* name);
-void mqtt_exit(mqtt_t);
-int mqtt_publish(mqtt_t inst, char* topic, char* payload);
-//int mqtt_subscribe(mqtt_t inst, char* topic);
-int mqtt_will(mqtt_t inst, const char* topic, const char* payoad);
-int mqtt_open(mqtt_t inst, /*@shared@*/ dispatch_t d, const char* host, int port, int keepalive);
-
-#endif // MQTT_H
+#endif // PUBLISH_H
 

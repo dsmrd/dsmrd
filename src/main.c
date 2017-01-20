@@ -44,6 +44,7 @@
 #endif // FEATURE_MQTT
 #include "stats.h"
 #include "rest.h"
+#include "publish.h"
 
 
 static struct struct_dsmr_t dsmr;
@@ -103,53 +104,6 @@ static void cb(void* key, void* value) {
 	printf("\n");
 }
 */
-
-#ifdef FEATURE_MQTT
-static int publish(dsmr_t dsmr_) {
-	obis_object_t object;
-	char buf[1024];
-
-	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF1);
-	snprintf(buf, sizeof(buf), "%010.3f", object->v.f.d);
-	mqtt_publish(m, "/dsmrd/devices/0/tariffs/1/delivered", buf);
-
-	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF2);
-	snprintf(buf, sizeof(buf), "%010.3f", object->v.f.d);
-	mqtt_publish(m, "/dsmrd/devices/0/tariffs/2/delivered", buf);
-
-	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF1);
-	snprintf(buf, sizeof(buf), "%010.3f", object->v.f.d);
-	mqtt_publish(m, "/dsmrd/devices/0/tariffs/1/received", buf);
-
-	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF2);
-	snprintf(buf, sizeof(buf), "%010.3f", object->v.f.d);
-	mqtt_publish(m, "/dsmrd/devices/0/tariffs/2/received", buf);
-
-	object = rbtree_get(dsmr_->objects, OBIS_DEVICE1_LAST_5MIN_VALUE);
-	snprintf(buf, sizeof(buf), "%010.3f", object->v.m.d);
-	mqtt_publish(m, "/dsmrd/devices/1/tariffs/1/received", buf);
-	snprintf(buf, sizeof(buf), "%ld", object->v.m.t);
-	mqtt_publish(m, "/dsmrd/devices/1/tariffs/1/timestamp", buf);
-
-	object = rbtree_get(dsmr_->objects, OBIS_DATETIME_STAMP);
-	snprintf(buf, sizeof(buf), "%ld", object->v.t);
-	mqtt_publish(m, "/dsmrd/devices/0/timestamp", buf);
-
-	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF_INDICATOR);
-	snprintf(buf, sizeof(buf), "%d", object->v.i);
-	mqtt_publish(m, "/dsmrd/devices/0/indicator", buf);
-
-	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_POWER_DELIVERED);
-	snprintf(buf, sizeof(buf), "%06.3f", object->v.f.d);
-	mqtt_publish(m, "/dsmrd/devices/0/delivered", buf);
-
-	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_POWER_RECEIVED);
-	snprintf(buf, sizeof(buf), "%06.3f", object->v.f.d);
-	mqtt_publish(m, "/dsmrd/devices/0/received", buf);
-
-	return 0;
-}
-#endif // FEATURE_MQTT
 
 static int do_stats(dsmr_t dsmr_) {
 	obis_object_t object;
@@ -224,7 +178,7 @@ static int dsmr_handle(dsmr_t dsmr_) {
 	//rbtree_foreach(dsmr_->objects, cb);
 
 #ifdef FEATURE_MQTT
-	publish(dsmr_);
+	publish(m, dsmr_);
 #endif // FEATURE_MQTT
 
 	do_stats(dsmr_);
@@ -295,14 +249,15 @@ int main(int argc, char* argv[]) {
 	ava = avahi_init(options->dnssd_name);
 #endif // FEATURE_DNS_SD
 #ifdef FEATURE_MQTT
-	m = mqtt_init();
+	m = mqtt_init(options->mqtt_name);
+	publish_init(m);
 #endif // FEATURE_MQTT
 	rest_init(&dsmr);
 
 	dis = dispatch_init();
 
 #ifdef FEATURE_MQTT
-	mqtt_open(m, dis, options->mqtt_name, options->mqtt_host, options->mqtt_port, 10);
+	mqtt_open(m, dis, options->mqtt_host, options->mqtt_port, 10);
 #endif // FEATURE_MQTT
 
 	acc = accept_init(options->port, accept_rest_cb, &dsmr);

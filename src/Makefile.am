@@ -17,6 +17,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
+SUBDIRS = tst
+
 wwwdir = $(pkgdatadir)/www
 
 bin_PROGRAMS = dsmrd
@@ -59,6 +61,8 @@ dsmrd_SOURCES += mqtt.c
 endif
 dsmrd_SOURCES += stats.h
 dsmrd_SOURCES += stats.c
+dsmrd_SOURCES += publish.h
+dsmrd_SOURCES += publish.c
 
 noinst_PROGRAMS = p1sim
 p1sim_SOURCES = p1sim.c

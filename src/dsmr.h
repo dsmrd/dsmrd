@@ -44,6 +44,7 @@ struct obis_object_struct_t {
 		struct {
 			double d;
 			time_t t;
+			char s[5];
 		} m;
 	} v;
 };

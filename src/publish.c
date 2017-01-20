@@ -28,11 +28,11 @@
 
 
 int publish_init(mqtt_t m) {
-	(void) mqtt_will(m, "/dsmrd/meter/0", "undefined");
-	(void) mqtt_will(m, "/dsmrd/meter/1", "undefined");
-	(void) mqtt_will(m, "/dsmrd/meter/2", "undefined");
-	(void) mqtt_will(m, "/dsmrd/meter/3", "undefined");
-	(void) mqtt_will(m, "/dsmrd/meter/4", "undefined");
+	(void) mqtt_will(m, "/dsmrd/meters/0", "undefined");
+	(void) mqtt_will(m, "/dsmrd/meters/1", "undefined");
+	(void) mqtt_will(m, "/dsmrd/meters/2", "undefined");
+	(void) mqtt_will(m, "/dsmrd/meters/3", "undefined");
+	(void) mqtt_will(m, "/dsmrd/meters/4", "undefined");
 	return 0;
 }
 
@@ -45,23 +45,23 @@ int publish(mqtt_t m, dsmr_t dsmr_) {
 
 	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF1);
 	(void) snprintf(buf, sizeof(buf), "{ \"timestamp\": %lu, \"value\": %.3f, \"unit\": \"%s\" }", tobject->v.t, object->v.f.d, object->v.f.s);
-	(void) mqtt_publish(m, "/dsmrd/meter/0", buf);
+	(void) mqtt_publish(m, "/dsmrd/meters/0", buf);
 
 	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF2);
 	(void) snprintf(buf, sizeof(buf), "{ \"timestamp\": %lu, \"value\": %.3f, \"unit\": \"%s\" }", tobject->v.t, object->v.f.d, object->v.f.s);
-	(void) mqtt_publish(m, "/dsmrd/meter/1", buf);
+	(void) mqtt_publish(m, "/dsmrd/meters/1", buf);
 
 	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF1);
 	(void) snprintf(buf, sizeof(buf), "{ \"timestamp\": %lu, \"value\": %.3f, \"unit\": \"%s\" }", tobject->v.t, object->v.f.d, object->v.f.s);
-	(void) mqtt_publish(m, "/dsmrd/meter/2", buf);
+	(void) mqtt_publish(m, "/dsmrd/meters/2", buf);
 
 	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF2);
 	(void) snprintf(buf, sizeof(buf), "{ \"timestamp\": %lu, \"value\": %.3f, \"unit\": \"%s\" }", tobject->v.t, object->v.f.d, object->v.f.s);
-	(void) mqtt_publish(m, "/dsmrd/meter/3", buf);
+	(void) mqtt_publish(m, "/dsmrd/meters/3", buf);
 
 	object = rbtree_get(dsmr_->objects, OBIS_DEVICE1_LAST_5MIN_VALUE);
-	(void) snprintf(buf, sizeof(buf), "{ \"timestamp\": %lu, \"value\": %.3f }", object->v.m.t, object->v.m.d);
-	(void) mqtt_publish(m, "/dsmrd/meter/4", buf);
+	(void) snprintf(buf, sizeof(buf), "{ \"timestamp\": %lu, \"value\": %.3f, \"unit\": \"%s\" }", object->v.m.t, object->v.m.d, object->v.m.s);
+	(void) mqtt_publish(m, "/dsmrd/meters/4", buf);
 
 
 	object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF1);

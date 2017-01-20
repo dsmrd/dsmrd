@@ -359,7 +359,7 @@ int obis_decode_5min(obis_object_t de, char* in, char* unit) {
     char arg2[256];
     char arg3[256];
     regex_t prg;
-    regmatch_t pmtch[4];
+    regmatch_t pmtch[5];
     int rval;
 	time_t out1;
 	double out2;
@@ -371,11 +371,11 @@ int obis_decode_5min(obis_object_t de, char* in, char* unit) {
     } else {
 		struct tm lt;
 		regsubstr(arg1, sizeof(arg1), in, pmtch, 1);
-		regsubstr(arg2, sizeof(arg2), in, pmtch, 2);
-		regsubstr(arg3, sizeof(arg3), in, pmtch, 3);
+		regsubstr(arg2, sizeof(arg2), in, pmtch, 3);
+		regsubstr(de->v.m.s, sizeof(de->v.m.s), in, pmtch, 4);
 		strptime(arg1, "%y%m%d%H%M%S", &lt);
 		out1 = mktime(&lt);
-		sscanf(arg3, "%lf", &out2);
+		sscanf(arg2, "%lf", &out2);
 		de->type = MIN5;
 		de->v.m.t = out1;
 		de->v.m.d = out2;

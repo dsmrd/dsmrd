@@ -61,6 +61,8 @@ dsmrd_SOURCES += database.h
 dsmrd_SOURCES += database.c
 dsmrd_SOURCES += publish.h
 dsmrd_SOURCES += publish.c
+dsmrd_SOURCES += statistics.h
+dsmrd_SOURCES += statistics.c
 
 noinst_PROGRAMS = p1sim
 p1sim_SOURCES = p1sim.c

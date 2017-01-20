@@ -43,6 +43,7 @@
 #include "mqtt.h"
 #endif // FEATURE_MQTT
 #include "database.h"
+#include "statistics.h"
 #include "rest.h"
 #include "publish.h"
 
@@ -53,31 +54,7 @@ static struct struct_dsmr_t dsmr;
 static mqtt_t m;
 #endif // FEATURE_MQTT
 
-static stats_t stats;
-static stats_data_t stats_electr_to_client_tariff1_hourly;
-static stats_data_t stats_electr_to_client_tariff1_daily;
-static stats_data_t stats_electr_to_client_tariff1_weekly;
-static stats_data_t stats_electr_to_client_tariff2_hourly;
-static stats_data_t stats_electr_to_client_tariff2_daily;
-static stats_data_t stats_electr_to_client_tariff2_weekly;
-static stats_data_t stats_electr_by_client_tariff1_hourly;
-static stats_data_t stats_electr_by_client_tariff1_daily;
-static stats_data_t stats_electr_by_client_tariff1_weekly;
-static stats_data_t stats_electr_by_client_tariff2_hourly;
-static stats_data_t stats_electr_by_client_tariff2_daily;
-static stats_data_t stats_electr_by_client_tariff2_weekly;
-static stats_data_t stats_device1_last_5min_value_hourly;
-static stats_data_t stats_device1_last_5min_value_daily;
-static stats_data_t stats_device1_last_5min_value_weekly;
-static stats_data_t stats_device2_last_5min_value_hourly;
-static stats_data_t stats_device2_last_5min_value_daily;
-static stats_data_t stats_device2_last_5min_value_weekly;
-static stats_data_t stats_device3_last_5min_value_hourly;
-static stats_data_t stats_device3_last_5min_value_daily;
-static stats_data_t stats_device3_last_5min_value_weekly;
-static stats_data_t stats_device4_last_5min_value_hourly;
-static stats_data_t stats_device4_last_5min_value_daily;
-static stats_data_t stats_device4_last_5min_value_weekly;
+static database_t stats;
 
 
 /*
@@ -105,73 +82,6 @@ static void cb(void* key, void* value) {
 }
 */
 
-static int do_stats(dsmr_t dsmr_) {
-	obis_object_t object;
-	obis_object_t time_object;
-
-	time_object = rbtree_get(dsmr_->objects, OBIS_DATETIME_STAMP);
-	if (time_object != NULL) {
-
-		object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF1);
-		if (object != NULL) {
-			stats_evaluate(stats, stats_electr_to_client_tariff1_hourly, time_object->v.t, object->v.f.d);
-			stats_evaluate(stats, stats_electr_to_client_tariff1_daily, time_object->v.t, object->v.f.d);
-			stats_evaluate(stats, stats_electr_to_client_tariff1_weekly, time_object->v.t, object->v.f.d);
-		}
-
-		object = rbtree_get(dsmr_->objects, OBIS_ELECTR_TO_CLIENT_TARIFF2);
-		if (object != NULL) {
-			stats_evaluate(stats, stats_electr_to_client_tariff2_hourly, time_object->v.t, object->v.f.d);
-			stats_evaluate(stats, stats_electr_to_client_tariff2_daily, time_object->v.t, object->v.f.d);
-			stats_evaluate(stats, stats_electr_to_client_tariff2_weekly, time_object->v.t, object->v.f.d);
-		}
-
-		object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF1);
-		if (object != NULL) {
-			stats_evaluate(stats, stats_electr_by_client_tariff1_hourly, time_object->v.t, object->v.f.d);
-			stats_evaluate(stats, stats_electr_by_client_tariff1_daily, time_object->v.t, object->v.f.d);
-			stats_evaluate(stats, stats_electr_by_client_tariff1_weekly, time_object->v.t, object->v.f.d);
-		}
-
-		object = rbtree_get(dsmr_->objects, OBIS_ELECTR_BY_CLIENT_TARIFF2);
-		if (object != NULL) {
-			stats_evaluate(stats, stats_electr_by_client_tariff2_hourly, time_object->v.t, object->v.f.d);
-			stats_evaluate(stats, stats_electr_by_client_tariff2_daily, time_object->v.t, object->v.f.d);
-			stats_evaluate(stats, stats_electr_by_client_tariff2_weekly, time_object->v.t, object->v.f.d);
-		}
-
-		object = rbtree_get(dsmr_->objects, OBIS_DEVICE1_LAST_5MIN_VALUE);
-		if (object != NULL) {
-			stats_evaluate(stats, stats_device1_last_5min_value_hourly, object->v.m.t, object->v.m.d);
-			stats_evaluate(stats, stats_device1_last_5min_value_daily, object->v.m.t, object->v.m.d);
-			stats_evaluate(stats, stats_device1_last_5min_value_weekly, object->v.m.t, object->v.m.d);
-		}
-
-		object = rbtree_get(dsmr_->objects, OBIS_DEVICE2_LAST_5MIN_VALUE);
-		if (object != NULL) {
-			stats_evaluate(stats, stats_device2_last_5min_value_hourly, object->v.m.t, object->v.m.d);
-			stats_evaluate(stats, stats_device2_last_5min_value_daily, object->v.m.t, object->v.m.d);
-			stats_evaluate(stats, stats_device2_last_5min_value_weekly, object->v.m.t, object->v.m.d);
-		}
-
-		object = rbtree_get(dsmr_->objects, OBIS_DEVICE3_LAST_5MIN_VALUE);
-		if (object != NULL) {
-			stats_evaluate(stats, stats_device3_last_5min_value_hourly, object->v.m.t, object->v.m.d);
-			stats_evaluate(stats, stats_device3_last_5min_value_daily, object->v.m.t, object->v.m.d);
-			stats_evaluate(stats, stats_device3_last_5min_value_weekly, object->v.m.t, object->v.m.d);
-		}
-
-		object = rbtree_get(dsmr_->objects, OBIS_DEVICE4_LAST_5MIN_VALUE);
-		if (object != NULL) {
-			stats_evaluate(stats, stats_device4_last_5min_value_hourly, object->v.m.t, object->v.m.d);
-			stats_evaluate(stats, stats_device4_last_5min_value_daily, object->v.m.t, object->v.m.d);
-			stats_evaluate(stats, stats_device4_last_5min_value_weekly, object->v.m.t, object->v.m.d);
-		}
-	}
-
-	return 0;
-}
-
 static int dsmr_handle(dsmr_t dsmr_) {
 	dsmr = *dsmr_;
 	//dsmr_print(dsmr_);
@@ -181,7 +91,7 @@ static int dsmr_handle(dsmr_t dsmr_) {
 	publish(m, dsmr_);
 #endif // FEATURE_MQTT
 
-	do_stats(dsmr_);
+	do_stats(stats, dsmr_);
 
 	return 0;
 }
@@ -217,31 +127,8 @@ int main(int argc, char* argv[]) {
 	}
 
 	(void) logging_init(options->daemonize, options->verbose, PACKAGE, LOG_DAEMON);
-	stats = stats_init(options->stats_database);
-	stats_electr_to_client_tariff1_hourly = stats_data_init(OBIS_ELECTR_TO_CLIENT_TARIFF1, STATS_TYPE_HOURLY);
-	stats_electr_to_client_tariff1_daily = stats_data_init(OBIS_ELECTR_TO_CLIENT_TARIFF1, STATS_TYPE_DAILY);
-	stats_electr_to_client_tariff1_weekly = stats_data_init(OBIS_ELECTR_TO_CLIENT_TARIFF1, STATS_TYPE_WEEKLY);
-	stats_electr_to_client_tariff2_hourly = stats_data_init(OBIS_ELECTR_TO_CLIENT_TARIFF2, STATS_TYPE_HOURLY);
-	stats_electr_to_client_tariff2_daily = stats_data_init(OBIS_ELECTR_TO_CLIENT_TARIFF2, STATS_TYPE_DAILY);
-	stats_electr_to_client_tariff2_weekly = stats_data_init(OBIS_ELECTR_TO_CLIENT_TARIFF2, STATS_TYPE_WEEKLY);
-	stats_electr_by_client_tariff1_hourly = stats_data_init(OBIS_ELECTR_BY_CLIENT_TARIFF1, STATS_TYPE_HOURLY);
-	stats_electr_by_client_tariff1_daily = stats_data_init(OBIS_ELECTR_BY_CLIENT_TARIFF1, STATS_TYPE_DAILY);
-	stats_electr_by_client_tariff1_weekly = stats_data_init(OBIS_ELECTR_BY_CLIENT_TARIFF1, STATS_TYPE_WEEKLY);
-	stats_electr_by_client_tariff2_hourly = stats_data_init(OBIS_ELECTR_BY_CLIENT_TARIFF2, STATS_TYPE_HOURLY);
-	stats_electr_by_client_tariff2_daily = stats_data_init(OBIS_ELECTR_BY_CLIENT_TARIFF2, STATS_TYPE_DAILY);
-	stats_electr_by_client_tariff2_weekly = stats_data_init(OBIS_ELECTR_BY_CLIENT_TARIFF2, STATS_TYPE_WEEKLY);
-	stats_device1_last_5min_value_hourly = stats_data_init(OBIS_DEVICE1_LAST_5MIN_VALUE, STATS_TYPE_HOURLY);
-	stats_device1_last_5min_value_daily = stats_data_init(OBIS_DEVICE1_LAST_5MIN_VALUE, STATS_TYPE_DAILY);
-	stats_device1_last_5min_value_weekly = stats_data_init(OBIS_DEVICE1_LAST_5MIN_VALUE, STATS_TYPE_WEEKLY);
-	stats_device2_last_5min_value_hourly = stats_data_init(OBIS_DEVICE2_LAST_5MIN_VALUE, STATS_TYPE_HOURLY);
-	stats_device2_last_5min_value_daily = stats_data_init(OBIS_DEVICE2_LAST_5MIN_VALUE, STATS_TYPE_DAILY);
-	stats_device2_last_5min_value_weekly = stats_data_init(OBIS_DEVICE2_LAST_5MIN_VALUE, STATS_TYPE_WEEKLY);
-	stats_device3_last_5min_value_hourly = stats_data_init(OBIS_DEVICE3_LAST_5MIN_VALUE, STATS_TYPE_HOURLY);
-	stats_device3_last_5min_value_daily = stats_data_init(OBIS_DEVICE3_LAST_5MIN_VALUE, STATS_TYPE_DAILY);
-	stats_device3_last_5min_value_weekly = stats_data_init(OBIS_DEVICE3_LAST_5MIN_VALUE, STATS_TYPE_WEEKLY);
-	stats_device4_last_5min_value_hourly = stats_data_init(OBIS_DEVICE4_LAST_5MIN_VALUE, STATS_TYPE_HOURLY);
-	stats_device4_last_5min_value_daily = stats_data_init(OBIS_DEVICE4_LAST_5MIN_VALUE, STATS_TYPE_DAILY);
-	stats_device4_last_5min_value_weekly = stats_data_init(OBIS_DEVICE4_LAST_5MIN_VALUE, STATS_TYPE_WEEKLY);
+	stats = database_init(options->stats_database);
+	statistics_init();
 
 	ser = serial_init(options->tty, options->baud, options->is_tty, decoder);
 	(void) dsmr_init(dsmr_handle, &dsmr);
@@ -277,31 +164,8 @@ int main(int argc, char* argv[]) {
 
 	dispatch_close(dis);
 
-	stats_data_exit(stats_electr_to_client_tariff1_hourly);
-	stats_data_exit(stats_electr_to_client_tariff1_daily);
-	stats_data_exit(stats_electr_to_client_tariff1_weekly);
-	stats_data_exit(stats_electr_to_client_tariff2_hourly);
-	stats_data_exit(stats_electr_to_client_tariff2_daily);
-	stats_data_exit(stats_electr_to_client_tariff2_weekly);
-	stats_data_exit(stats_electr_by_client_tariff1_hourly);
-	stats_data_exit(stats_electr_by_client_tariff1_daily);
-	stats_data_exit(stats_electr_by_client_tariff1_weekly);
-	stats_data_exit(stats_electr_by_client_tariff2_hourly);
-	stats_data_exit(stats_electr_by_client_tariff2_daily);
-	stats_data_exit(stats_electr_by_client_tariff2_weekly);
-	stats_data_exit(stats_device1_last_5min_value_hourly);
-	stats_data_exit(stats_device1_last_5min_value_daily);
-	stats_data_exit(stats_device1_last_5min_value_weekly);
-	stats_data_exit(stats_device2_last_5min_value_hourly);
-	stats_data_exit(stats_device2_last_5min_value_daily);
-	stats_data_exit(stats_device2_last_5min_value_weekly);
-	stats_data_exit(stats_device3_last_5min_value_hourly);
-	stats_data_exit(stats_device3_last_5min_value_daily);
-	stats_data_exit(stats_device3_last_5min_value_weekly);
-	stats_data_exit(stats_device4_last_5min_value_hourly);
-	stats_data_exit(stats_device4_last_5min_value_daily);
-	stats_data_exit(stats_device4_last_5min_value_weekly);
-	stats_exit(stats);
+	statistics_exit();
+	database_exit(stats);
 
 	return EXIT_SUCCESS;
 }

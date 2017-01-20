@@ -30,14 +30,14 @@
 #include "database.h"
 
 
-struct stats_struct_t {
+struct database_struct_t {
 	sqlite3* db;
 	sqlite3_stmt* stmt;
 	sqlite3_stmt* select;
 };
 
-struct stats_data_struct_t {
-	stats_type_t type;
+struct database_data_struct_t {
+	database_type_t type;
 	time_t prevtime;
 	double prevvalue;
 	char name[32];
@@ -45,24 +45,24 @@ struct stats_data_struct_t {
 
 
 /*
-static const char* type2str(stats_type_t t) {
+static const char* type2str(database_type_t t) {
 	char* map[] = { NULL,  "HOURLY", "DAILY", "WEEKLY" };
 	return map[t];
 }
 */
 
-#define STATS_TABLE_NAME "dsmrd"
-#define STATS_TYPE_NAME "type"
-#define STATS_METER_NAME "meter"
-#define STATS_TIMESTAMP_NAME "timestamp"
-#define STATS_VALUE_NAME "value"
-#define STATS_TYPE_PARAM ":t"
-#define STATS_METER_PARAM ":name"
-#define STATS_TIMESTAMP_PARAM ":a"
-#define STATS_VALUE_PARAM ":b"
+#define DATABASE_TABLE_NAME "dsmrd"
+#define DATABASE_TYPE_NAME "type"
+#define DATABASE_METER_NAME "meter"
+#define DATABASE_TIMESTAMP_NAME "timestamp"
+#define DATABASE_VALUE_NAME "value"
+#define DATABASE_TYPE_PARAM ":t"
+#define DATABASE_METER_PARAM ":name"
+#define DATABASE_TIMESTAMP_PARAM ":a"
+#define DATABASE_VALUE_PARAM ":b"
 
-stats_t stats_init(char* name) {
-	stats_t inst;
+database_t database_init(char* name) {
+	database_t inst;
 	char buf[256];
 	int rval;
 
@@ -74,22 +74,22 @@ stats_t stats_init(char* name) {
 		sqlite3_close(inst->db);
 	}
 
-	rval = sqlite3_exec(inst->db, "CREATE TABLE IF NOT EXISTS " STATS_TABLE_NAME "("
-			STATS_TYPE_NAME " INT, " STATS_METER_NAME " TEXT, "
-			STATS_TIMESTAMP_NAME " INT, " STATS_VALUE_NAME " DOUBLE)", NULL, NULL, NULL);
+	rval = sqlite3_exec(inst->db, "CREATE TABLE IF NOT EXISTS " DATABASE_TABLE_NAME "("
+			DATABASE_TYPE_NAME " INT, " DATABASE_METER_NAME " TEXT, "
+			DATABASE_TIMESTAMP_NAME " INT, " DATABASE_VALUE_NAME " DOUBLE)", NULL, NULL, NULL);
 	if (rval != SQLITE_OK) {
 		error("Can't prepare statement: %s", sqlite3_errmsg(inst->db));
 	}
 
-	rval = sqlite3_prepare_v2(inst->db, "INSERT INTO " STATS_TABLE_NAME " (" STATS_TYPE_NAME ", " STATS_METER_NAME ", " STATS_TIMESTAMP_NAME ", " STATS_VALUE_NAME ") VALUES (" STATS_TYPE_PARAM ", " STATS_METER_PARAM ", " STATS_TIMESTAMP_PARAM ", " STATS_VALUE_PARAM ");", -1, &inst->stmt, NULL);
+	rval = sqlite3_prepare_v2(inst->db, "INSERT INTO " DATABASE_TABLE_NAME " (" DATABASE_TYPE_NAME ", " DATABASE_METER_NAME ", " DATABASE_TIMESTAMP_NAME ", " DATABASE_VALUE_NAME ") VALUES (" DATABASE_TYPE_PARAM ", " DATABASE_METER_PARAM ", " DATABASE_TIMESTAMP_PARAM ", " DATABASE_VALUE_PARAM ");", -1, &inst->stmt, NULL);
 	if (rval != SQLITE_OK) {
 		error("Can't prepare statement: %s", sqlite3_errmsg(inst->db));
 	}
 
 	snprintf(buf, sizeof(buf), "SELECT strftime(\"%%w\", %s, \"unixepoch\", \"localtime\") AS day, strftime(\"%%H\", %s, \"unixepoch\", \"localtime\") AS hour, min(%s), max(%s), avg(%s) FROM %s WHERE %s=%s GROUP BY day, hour",
-			STATS_TIMESTAMP_NAME, STATS_TIMESTAMP_NAME,
-			STATS_VALUE_NAME, STATS_VALUE_NAME, STATS_VALUE_NAME,
-			STATS_TABLE_NAME, STATS_TYPE_NAME, STATS_TYPE_PARAM);
+			DATABASE_TIMESTAMP_NAME, DATABASE_TIMESTAMP_NAME,
+			DATABASE_VALUE_NAME, DATABASE_VALUE_NAME, DATABASE_VALUE_NAME,
+			DATABASE_TABLE_NAME, DATABASE_TYPE_NAME, DATABASE_TYPE_PARAM);
 
 	rval = sqlite3_prepare_v2(inst->db, buf, -1, &inst->select, NULL);
 	if (rval != SQLITE_OK) {
@@ -99,27 +99,27 @@ stats_t stats_init(char* name) {
 	return inst;
 }
 
-int stats_update(stats_t inst, int type, char* m, int i, double d) {
+int database_update(database_t inst, int type, char* m, int i, double d) {
 	int rval;
 
-	rval = sqlite3_bind_int(inst->stmt, sqlite3_bind_parameter_index(inst->stmt, STATS_TYPE_PARAM), type);
+	rval = sqlite3_bind_int(inst->stmt, sqlite3_bind_parameter_index(inst->stmt, DATABASE_TYPE_PARAM), type);
 	if (rval != SQLITE_OK) {
-		error("Can't bind " STATS_TYPE_NAME ": %s", sqlite3_errmsg(inst->db));
+		error("Can't bind " DATABASE_TYPE_NAME ": %s", sqlite3_errmsg(inst->db));
 	}
 
-	rval = sqlite3_bind_text(inst->stmt, sqlite3_bind_parameter_index(inst->stmt, STATS_METER_PARAM), m, -1, NULL);
+	rval = sqlite3_bind_text(inst->stmt, sqlite3_bind_parameter_index(inst->stmt, DATABASE_METER_PARAM), m, -1, NULL);
 	if (rval != SQLITE_OK) {
-		error("Can't bind " STATS_METER_NAME ": %s", sqlite3_errmsg(inst->db));
+		error("Can't bind " DATABASE_METER_NAME ": %s", sqlite3_errmsg(inst->db));
 	}
 
-	rval = sqlite3_bind_int(inst->stmt, sqlite3_bind_parameter_index(inst->stmt, STATS_TIMESTAMP_PARAM), i);
+	rval = sqlite3_bind_int(inst->stmt, sqlite3_bind_parameter_index(inst->stmt, DATABASE_TIMESTAMP_PARAM), i);
 	if (rval != SQLITE_OK) {
-		error("Can't bind " STATS_TIMESTAMP_NAME ": %s", sqlite3_errmsg(inst->db));
+		error("Can't bind " DATABASE_TIMESTAMP_NAME ": %s", sqlite3_errmsg(inst->db));
 	}
 
-	rval = sqlite3_bind_double(inst->stmt, sqlite3_bind_parameter_index(inst->stmt, STATS_VALUE_PARAM), d);
+	rval = sqlite3_bind_double(inst->stmt, sqlite3_bind_parameter_index(inst->stmt, DATABASE_VALUE_PARAM), d);
 	if (rval != SQLITE_OK) {
-		error("Can't bind " STATS_VALUE_NAME ": %s", sqlite3_errmsg(inst->db));
+		error("Can't bind " DATABASE_VALUE_NAME ": %s", sqlite3_errmsg(inst->db));
 	}
 
 	rval = SQLITE_ROW;
@@ -138,10 +138,10 @@ int stats_update(stats_t inst, int type, char* m, int i, double d) {
 	return 0;
 }
 
-int stats_select(stats_t inst, stats_data_t data) {
+int database_select(database_t inst, database_data_t data) {
 	int rval;
 
-	rval = sqlite3_bind_int(inst->select, sqlite3_bind_parameter_index(inst->select, STATS_TYPE_PARAM), data->type);
+	rval = sqlite3_bind_int(inst->select, sqlite3_bind_parameter_index(inst->select, DATABASE_TYPE_PARAM), data->type);
 	if (rval != SQLITE_OK) {
 		error("Can't bind name: %s", sqlite3_errmsg(inst->db));
 	}
@@ -175,7 +175,7 @@ int stats_select(stats_t inst, stats_data_t data) {
 	return 0;
 }
 
-int stats_exit(stats_t inst) {
+int database_exit(database_t inst) {
 	int rval;
 
 	rval = sqlite3_finalize(inst->stmt);
@@ -200,26 +200,26 @@ int stats_exit(stats_t inst) {
 
 
 
-int stats_evaluate(stats_t inst, stats_data_t stats, time_t a, double b) {
+int database_evaluate(database_t inst, database_data_t stats, time_t a, double b) {
 	int rval = 0;
 	time_t newtime = -1;
 	struct tm* t;
 
 	switch (stats->type) {
-		case STATS_TYPE_HOURLY:
+		case DATABASE_TYPE_HOURLY:
 			t = localtime(&a);
 			t->tm_sec = 0;
 			t->tm_min = 0;
 			newtime = mktime(t);
 			break;
-		case STATS_TYPE_DAILY:
+		case DATABASE_TYPE_DAILY:
 			t = localtime(&a);
 			t->tm_sec = 0;
 			t->tm_min = 0;
 			t->tm_hour = 0;
 			newtime = mktime(t);
 			break;
-		case STATS_TYPE_WEEKLY:
+		case DATABASE_TYPE_WEEKLY:
 			t = localtime(&a);
 			t->tm_sec = 0;
 			t->tm_min = 0;
@@ -247,7 +247,7 @@ int stats_evaluate(stats_t inst, stats_data_t stats, time_t a, double b) {
 				t = localtime(&newtime);
 				strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", t);
 				//printf("%s - %f\n", buf, b);
-				rval = stats_update(inst, stats->type, stats->name, stats->prevtime, b - stats->prevvalue);
+				rval = database_update(inst, stats->type, stats->name, stats->prevtime, b - stats->prevvalue);
 			}
 			stats->prevvalue = b;
 		}
@@ -257,15 +257,15 @@ int stats_evaluate(stats_t inst, stats_data_t stats, time_t a, double b) {
 	return rval;
 }
 
-stats_data_t stats_data_init(char* name, stats_type_t type) {
-	stats_data_t inst;
-	inst = (stats_data_t) calloc(sizeof(*inst), 1);
+database_data_t database_data_init(char* name, database_type_t type) {
+	database_data_t inst;
+	inst = (database_data_t) calloc(sizeof(*inst), 1);
 	inst->type = type;
 	strncpy(inst->name, name, sizeof(inst->name));
 	return inst;
 }
 
-void stats_data_exit(stats_data_t inst) {
+void database_data_exit(database_data_t inst) {
 	free(inst);
 }
 

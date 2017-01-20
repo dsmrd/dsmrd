@@ -17,25 +17,25 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef STATS_H
-#define STATS_H
+#ifndef DATABASE_H
+#define DATABASE_H
 
-typedef struct stats_struct_t* stats_t;
-typedef struct stats_data_struct_t* stats_data_t;
+typedef struct database_struct_t* database_t;
+typedef struct database_data_struct_t* database_data_t;
 
 typedef enum {
-	STATS_TYPE_HOURLY = 1,
-	STATS_TYPE_DAILY = 2,
-	STATS_TYPE_WEEKLY = 3,
-} stats_type_t;
+	DATABASE_TYPE_HOURLY = 1,
+	DATABASE_TYPE_DAILY = 2,
+	DATABASE_TYPE_WEEKLY = 3,
+} database_type_t;
 
 
-stats_t stats_init(char* name);
-int stats_evaluate(stats_t inst, stats_data_t stats, time_t a, double b);
-int stats_select(stats_t inst, stats_data_t data);
-int stats_exit(stats_t inst);
-stats_data_t stats_data_init(char* name, stats_type_t type);
-void stats_data_exit(stats_data_t inst);
+database_t database_init(char* name);
+int database_evaluate(database_t inst, database_data_t stats, time_t a, double b);
+int database_select(database_t inst, database_data_t data);
+int database_exit(database_t inst);
+database_data_t database_data_init(char* name, database_type_t type);
+void database_data_exit(database_data_t inst);
 
-#endif // STATS_H
+#endif // DATABASE_H
 

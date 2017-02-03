@@ -91,6 +91,7 @@ AC_CHECK_FUNCS([strerror])
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile
-                 www/Makefile])
+                 www/Makefile
+                 www/images/Makefile])
 AC_OUTPUT
 

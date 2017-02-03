@@ -1,3 +1,4 @@
+SUBDIRS = images
 wwwdir = $(pkgdatadir)/www
 dist_www_DATA  = index.html
 dist_www_DATA += jquery.min.js

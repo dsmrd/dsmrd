@@ -24,7 +24,7 @@
 #include <config.h>
 #endif
 
-int daemonize();
+int daemonize(const char* pidfile);
 
 #endif // DAEMON_H
 

@@ -26,8 +26,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <fcntl.h>
 
-int daemonize() {
+int daemonize(const char* pidfile) {
 	pid_t pid = 0;
 	pid_t sid = 0;
 	int rval;
@@ -38,7 +39,20 @@ int daemonize() {
 		exit(EXIT_FAILURE);
 	} else {
 		if (pid > 0) {
-			printf("pid of child process %d \n", pid);
+			int fd;
+			fd = open(pidfile, O_CREAT|O_WRONLY);
+			if (fd == -1) {
+				printf("Cannot open PID file\n");
+			} else {
+				char buf[32];
+				snprintf(buf, sizeof(buf), "%d\n", pid);
+				rval = write(fd, buf, strlen(buf));
+				if (rval == -1) {
+					printf("blub\n");
+				}
+				printf("pid of child process %s\n", buf);
+				close(fd);
+			}
 			exit(EXIT_SUCCESS);
 		} else {
 			(void) umask(0);

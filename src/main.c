@@ -123,7 +123,7 @@ int main(int argc, char* argv[]) {
 	options_t options = options_init(argc, argv);
 
 	if (options->daemonize) {
-		daemonize();
+		daemonize("/var/run/dsmrd.pid");
 	}
 
 	(void) logging_init(options->daemonize, options->verbose, PACKAGE, LOG_DAEMON);
@@ -166,6 +166,8 @@ int main(int argc, char* argv[]) {
 
 	statistics_exit();
 	database_exit(stats);
+
+	unlink("/var/run/dsmrd.pid");
 
 	return EXIT_SUCCESS;
 }

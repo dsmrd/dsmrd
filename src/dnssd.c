@@ -193,6 +193,7 @@ int avahi_watch_closecb(void* userdata) {
 	return 0;
 }
 
+/*
 static char* watchevent2str(AvahiWatchEvent event) {
 	char* rval;
 	switch (event) {
@@ -204,6 +205,7 @@ static char* watchevent2str(AvahiWatchEvent event) {
 	}
 	return rval;
 }
+*/
 
 static AvahiWatch* avahi_watch_new(const AvahiPoll* poll, int fd, AvahiWatchEvent event, AvahiWatchCallback callback, void* userdata) {
 	AvahiWatch* inst;

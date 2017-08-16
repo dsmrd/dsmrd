@@ -180,7 +180,6 @@ static int serial_read(void* data) {
 static int serial_close(void* data) {
 	serial_t inst = (serial_t) data;
 	int rval;
-	void* hook;
 
 	rval = dispatch_unregister(inst->dis, inst->hook);
 	if (rval != 0) {

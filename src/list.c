@@ -74,7 +74,9 @@ static void list_add_node(list_t l, node_t n);
 /*@null@*/ static node_t node_init(void* val);
 /*@null@*/ static void* node_exit(node_t inst);
 /*@null@*/ static void* node_get_value(node_t inst);
+#if 0
 /*@null@*/ static char* node_to_string(node_t inst);
+#endif // 0
 
 /*@null@*/ iter_t iter_init(node_t n);
 void iter_exit(iter_t inst);
@@ -319,6 +321,7 @@ bool list_contains(list_t inst, void* val) {
 	return strdup(rval);
 }
 
+#if 0
 /*@null@*/ static char* node_to_string(node_t inst) {
 	char rval[256];
 	snprintf(rval, sizeof(rval), "(node_t) { val=%p }", node_get_value(inst));
@@ -335,4 +338,5 @@ static void string_free(void* p) {
 	//printf("free string@%p\n", p);
 	free(p);
 }
+#endif // 0
 

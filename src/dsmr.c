@@ -21,6 +21,7 @@
 #include <config.h>
 #endif
 #define _XOPEN_SOURCE
+#define _XOPEN_SOURCE_EXTENDED
 #define __USE_XOPEN
 #include <stdio.h>
 #include <string.h>
@@ -357,7 +358,6 @@ int obis_decode_string(obis_object_t de, char* in) {
 int obis_decode_5min(obis_object_t de, char* in, char* unit) {
     char arg1[256];
     char arg2[256];
-    char arg3[256];
     regex_t prg;
     regmatch_t pmtch[5];
     int rval;

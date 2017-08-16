@@ -40,7 +40,7 @@ int daemonize(const char* pidfile) {
 	} else {
 		if (pid > 0) {
 			int fd;
-			fd = open(pidfile, O_CREAT|O_WRONLY);
+			fd = open(pidfile, O_CREAT|O_WRONLY, S_IRWXU);
 			if (fd == -1) {
 				printf("Cannot open PID file\n");
 			} else {

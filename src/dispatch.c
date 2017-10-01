@@ -89,7 +89,7 @@ void termination_handler(int signum) {
 	}
 }
 
-static bool ptrcmp(const void* a, const void* b) {
+static int ptrcmp(const void* a, const void* b) {
 	bool rval;
 	rval = !(a == b);
 	return rval;
@@ -216,15 +216,15 @@ static void dispatch_nfds(dispatch_t inst) {
 	dispatch_hook_t hook;
 	int nfds = -1;
 
-	iter_t ihook = list_head(inst->hooks);
-	if (iter_get(ihook) != NULL) {
+	list_iter_t ihook = list_head(inst->hooks);
+	if (list_iter_get(ihook) != NULL) {
 		do {
-			hook = (dispatch_hook_t) iter_get(ihook);
+			hook = (dispatch_hook_t) list_iter_get(ihook);
 			nfds = max(nfds, hook->fd);
-		} while (iter_next(ihook));
+		} while (list_iter_next(ihook));
 		inst->nfds = nfds+1;
 	}
-	iter_exit(ihook);
+	list_iter_exit(ihook);
 
 	debug("(%p) Number of file-descriptors = %d", inst, inst->nfds);
 }
@@ -275,19 +275,19 @@ int dispatch_unregister(dispatch_t inst, dispatch_hook_t hook) {
 int dispatch_unregister_for_data(dispatch_t inst, void* data) {
 	dispatch_hook_t hook = NULL;
 
-	iter_t ihook = list_head(inst->hooks);
-	if (iter_get(ihook) != NULL) {
+	list_iter_t ihook = list_head(inst->hooks);
+	if (list_iter_get(ihook) != NULL) {
 		do {
-			hook = iter_get(ihook);
+			hook = list_iter_get(ihook);
 			if (hook->data == data) {
 				break;
 			}
-		} while (iter_next(ihook));
+		} while (list_iter_next(ihook));
 	}
-	if (iter_get(ihook) == 0) {
+	if (list_iter_get(ihook) == 0) {
 		error("Cannot unregister hook (no hook)");
 	} else {
-		if (((dispatch_hook_t)iter_get(ihook))->data != data) {
+		if (((dispatch_hook_t)list_iter_get(ihook))->data != data) {
 			error("Cannot unregister hook (no match found)");
 		} else {
 			dispatch_unregister(inst, hook);
@@ -348,15 +348,15 @@ int dispatch_remove_timer(dispatch_t inst, dispatch_timer_t t) {
 
 static list_t _dispatch_list_copy(list_t l) {
 	list_t cpy;
-	iter_t ihook;
+	list_iter_t ihook;
 
 	cpy = list_init(ptrcmp, NULL);
 	ihook = list_head(l);
-	while (!iter_eof(ihook)) {
-		list_add(cpy, iter_get(ihook));
-		iter_next(ihook);
+	while (!list_iter_eof(ihook)) {
+		list_add(cpy, list_iter_get(ihook));
+		list_iter_next(ihook);
 	}
-	iter_exit(ihook);
+	list_iter_exit(ihook);
 
 	return cpy;
 }
@@ -365,16 +365,16 @@ static dispatch_interval_t dispatch_handle_timers(dispatch_t inst) {
 	int to;
 	dispatch_interval_t mto = -1;
 	list_t timer_list;
-	iter_t timer_iter;
+	list_iter_t timer_iter;
 
 	timer_list = _dispatch_list_copy(inst->timers);
 	timer_iter = list_head(timer_list);
-	while (!iter_eof(timer_iter)) {
-		to = dispatch_timer_evaluate(inst, iter_get(timer_iter));
+	while (!list_iter_eof(timer_iter)) {
+		to = dispatch_timer_evaluate(inst, list_iter_get(timer_iter));
 		mto = min(mto, to);
-		iter_next(timer_iter);
+		list_iter_next(timer_iter);
 	}
-	iter_exit(timer_iter);
+	list_iter_exit(timer_iter);
 	list_exit(timer_list);
 
 	return mto;
@@ -410,22 +410,22 @@ int dispatch_handle_events(dispatch_t inst) {
 				break;
 			}
 		} else {
-			iter_t ihook;
+			list_iter_t ihook;
 			list_t cpy;
 
 			cpy = list_init(ptrcmp, NULL);
 			ihook = list_head(inst->hooks);
-			if (iter_get(ihook) != NULL) {
+			if (list_iter_get(ihook) != NULL) {
 				do {
-					list_add(cpy, iter_get(ihook));
-				} while (iter_next(ihook));
+					list_add(cpy, list_iter_get(ihook));
+				} while (list_iter_next(ihook));
 			}
-			iter_exit(ihook);
+			list_iter_exit(ihook);
 
 			ihook = list_head(cpy);
-			if (iter_get(ihook) != NULL) {
+			if (list_iter_get(ihook) != NULL) {
 				do {
-					dispatch_hook_t hook = (dispatch_hook_t) iter_get(ihook);
+					dispatch_hook_t hook = (dispatch_hook_t) list_iter_get(ihook);
 					int rval = 0;
 
 					if (FD_ISSET(hook->fd, &readfds)) {
@@ -447,35 +447,35 @@ int dispatch_handle_events(dispatch_t inst) {
 							dispatch_unregister(inst, hook);
 						}
 					}
-				} while (iter_next(ihook));
+				} while (list_iter_next(ihook));
 			}
 
-			iter_exit(ihook);
+			list_iter_exit(ihook);
 			list_exit(cpy);
 
 			to = dispatch_handle_timers(inst);
 
 			if ((inst->sigint) || (inst->sigterm)) {
-				iter_t ihook;
+				list_iter_t ihook;
 				list_t cpy;
 
 				cpy = list_init(ptrcmp, NULL);
 				ihook = list_head(inst->hooks);
-				if (iter_get(ihook) != NULL) {
+				if (list_iter_get(ihook) != NULL) {
 					do {
-						list_add(cpy, iter_get(ihook));
-					} while (iter_next(ihook));
+						list_add(cpy, list_iter_get(ihook));
+					} while (list_iter_next(ihook));
 				}
 
 				ihook = list_head(cpy);
-				if (iter_get(ihook) != NULL) {
+				if (list_iter_get(ihook) != NULL) {
 					do {
 						dispatch_hook_t hook;
-						hook = (dispatch_hook_t) iter_get(ihook);
+						hook = (dispatch_hook_t) list_iter_get(ihook);
 						if (hook->cb_close != NULL) {
 							hook->cb_close(hook->data);
 						}
-					} while (iter_next(ihook));
+					} while (list_iter_next(ihook));
 				}
 				//printf("Done %d\n", list_size(inst->hooks));
 
@@ -494,14 +494,14 @@ int dispatch_handle_events(dispatch_t inst) {
 
 int dispatch_close(dispatch_t inst) {
 	dispatch_hook_t hook;
-	iter_t ihook;
+	list_iter_t ihook;
 
 	ihook = list_head(inst->hooks);
-	if (iter_get(ihook) != NULL) {
+	if (list_iter_get(ihook) != NULL) {
 		do {
 			int rval;
 
-			hook = (dispatch_hook_t) iter_get(ihook);
+			hook = (dispatch_hook_t) list_iter_get(ihook);
 
 			if (hook->cb_close != NULL) {
 				rval = hook->cb_close(hook->data);
@@ -511,7 +511,7 @@ int dispatch_close(dispatch_t inst) {
 			} else {
 				dispatch_unregister(inst, hook);
 			}
-		} while (iter_next(ihook));
+		} while (list_iter_next(ihook));
 	} else {
 		info("No processes to stop");
 	}

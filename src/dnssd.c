@@ -308,7 +308,7 @@ static void avahi_timeout_free(AvahiTimeout* inst) {
 	//free(inst);
 }
 
-static bool timeout_cmp(const void* t1, const void* t2) {
+static int timeout_cmp(const void* t1, const void* t2) {
 	return t1 == t2;
 }
 

@@ -29,7 +29,7 @@ typedef int bool;
 
 typedef struct list_struct_t* list_t;
 typedef struct node_struct_t* node_t;
-typedef struct iter_struct_t* iter_t;
+typedef struct list_iter_struct_t* list_iter_t;
 
 typedef bool(*list_compare_t)(const void*, const void*);
 typedef void(*list_free_t)(void*);
@@ -48,7 +48,7 @@ struct node_struct_t {
 	void* val;
 };
 
-struct iter_struct_t {
+struct list_iter_struct_t {
 	node_t node;
 };
 
@@ -57,7 +57,7 @@ struct iter_struct_t {
 void list_exit(list_t inst);
 void list_add(list_t inst, void* val);
 void list_clear(list_t inst);
-/*@null@*/ iter_t list_head(list_t l);
+/*@null@*/ list_iter_t list_head(list_t l);
 int list_is_empty(list_t inst);
 size_t list_size(list_t inst);
 int list_index_of(list_t inst, void* val);
@@ -78,12 +78,12 @@ static void list_add_node(list_t l, node_t n);
 /*@null@*/ static char* node_to_string(node_t inst);
 #endif // 0
 
-/*@null@*/ iter_t iter_init(node_t n);
-void iter_exit(iter_t inst);
-bool iter_next(iter_t inst);
-bool iter_prev(iter_t inst);
-/*@null@*/ node_t iter_get_node(iter_t inst);
-/*@null@*/ void* iter_get(iter_t inst);
+/*@null@*/ list_iter_t list_iter_init(node_t n);
+void list_iter_exit(list_iter_t inst);
+bool list_iter_next(list_iter_t inst);
+bool list_iter_prev(list_iter_t inst);
+/*@null@*/ node_t list_iter_get_node(list_iter_t inst);
+/*@null@*/ void* list_iter_get(list_iter_t inst);
 
 ////////////////////////////////////////
 
@@ -164,9 +164,9 @@ static void list_add_node(list_t l, node_t n) {
 	}
 }
 
-/*@null@*/ iter_t iter_init(node_t n) {
-	iter_t inst;
-	inst = (iter_t) calloc(sizeof(struct iter_struct_t), 1);
+/*@null@*/ list_iter_t list_iter_init(node_t n) {
+	list_iter_t inst;
+	inst = (list_iter_t) calloc(sizeof(struct list_iter_struct_t), 1);
 	if (inst == NULL) {
 		printf("Err\n");
 	} else {
@@ -176,16 +176,16 @@ static void list_add_node(list_t l, node_t n) {
 	return inst;
 }
 
-void iter_exit(iter_t inst) {
+void list_iter_exit(list_iter_t inst) {
 	//printf("exit iter@%p\n", inst);
 	free(inst);
 }
 
-/*@null@*/ iter_t list_head(list_t l) {
-	return iter_init(l->head);
+/*@null@*/ list_iter_t list_head(list_t l) {
+	return list_iter_init(l->head);
 }
 
-bool iter_next(iter_t inst) {
+bool list_iter_next(list_iter_t inst) {
 	//bool rval;
 	//rval = (inst->node != NULL) && (inst->node->next != NULL);
 	if (inst->node != NULL) {
@@ -194,7 +194,7 @@ bool iter_next(iter_t inst) {
 	return (inst->node != NULL);
 }
 
-bool iter_prev(iter_t inst) {
+bool list_iter_prev(list_iter_t inst) {
 	bool rval;
 	rval = inst->node->prev != NULL;
 	if (rval) {
@@ -203,23 +203,23 @@ bool iter_prev(iter_t inst) {
 	return rval;
 }
 
-/*@null@*/ node_t iter_get_node(iter_t inst) {
+/*@null@*/ node_t list_iter_get_node(list_iter_t inst) {
 	return inst->node;
 }
 
-/*@null@*/ void* iter_get(iter_t inst) {
+/*@null@*/ void* list_iter_get(list_iter_t inst) {
 	void* rval = NULL;
 	node_t node;
 
-	node = iter_get_node(inst);
+	node = list_iter_get_node(inst);
 	if (node != NULL) {
-		rval = node_get_value(iter_get_node(inst));
+		rval = node_get_value(list_iter_get_node(inst));
 	}
 
 	return rval;
 }
 
-bool iter_eof(iter_t inst) {
+bool list_iter_eof(list_iter_t inst) {
 	return inst->node == NULL;
 }
 
